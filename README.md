@@ -1,5 +1,7 @@
 # ultraneuron
 
+[![tests](https://github.com/pinton-lab/ultraneuron/actions/workflows/tests.yml/badge.svg)](https://github.com/pinton-lab/ultraneuron/actions/workflows/tests.yml)
+
 An open-source framework for predicting ultrasound neuromodulation: from a transcranial acoustic field to per-voxel neural firing maps registered to anatomy.
 
 The pipeline couples heterogeneous nonlinear full-wave acoustic propagation, viscoelastic shear-wave displacement, Pennes bioheat thermal diffusion, a bilayer-mechanics conversion from tissue strain to membrane tension, and a multi-compartment Hodgkin–Huxley neuron carrying interchangeable mechanism modules:
