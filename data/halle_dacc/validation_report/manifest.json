@@ -1,0 +1,459 @@
+{
+  "sim_name": "halle_dacc",
+  "sim_title": "Halle CTX-500 Transcranial Bowl @ 500 kHz (auto-aimed at left dACC)",
+  "grid": {
+    "f0_hz": 500000.0,
+    "c0_mps": 1540.0,
+    "ppw": 10,
+    "cfl": 0.2,
+    "dx_m": 0.000308,
+    "dy_m": 0.000308,
+    "dz_m": 0.000308,
+    "nx": 422,
+    "ny": 260,
+    "nz": 260,
+    "domain_x_mm": 129.976,
+    "domain_y_mm": 80.08,
+    "domain_z_mm": 80.08,
+    "duration_s": 0.00016883116883116884,
+    "dt_s": 4.000000000000001e-08,
+    "nt": 4221
+  },
+  "source": {
+    "type": "tips_bowl",
+    "n_layers": 3,
+    "roc_mm": 63.0,
+    "outer_radius_mm": 32.0,
+    "inner_radius_mm": 0.0,
+    "n_elements": 4,
+    "p0_mpa": 0.39999999999999997,
+    "ncycles": 2,
+    "drop_off": 2.0,
+    "n_source_voxels": 73760
+  },
+  "placement": {
+    "scalp_site": null,
+    "target_name": "ACC_left",
+    "focal_length_mm": 63.0,
+    "bowl_radius_mm": 32.0,
+    "xdc_center_lps": [
+      79.08409855350452,
+      168.16052662284125,
+      177.32245028979506
+    ],
+    "scalp_contact_lps": [
+      76.4347152709961,
+      155.07040405273438,
+      158.0830078125
+    ],
+    "focus_lps": [
+      75.60038757324219,
+      142.6598663330078,
+      119.819580078125
+    ],
+    "target_lps": [
+      75.60038757324219,
+      142.6598663330078,
+      119.819580078125
+    ],
+    "perp_residual_mm": 0.6469359654933882,
+    "scalp_target_dist_mm": 40.23440631081479,
+    "apex_target_dist_mm": 62.999999999933806,
+    "bowl_depth_mm": 8.73214579513946,
+    "eeg_to_placement_mm": null,
+    "beam_dir_3d": [
+      -0.05529699968670359,
+      -0.4047723855529117,
+      -0.9127439716138103
+    ],
+    "normal_2d": [
+      -0.13535535002892995,
+      -0.9907971180890921
+    ],
+    "tangent_2d": [
+      0.9907971180890921,
+      -0.13535535002892995
+    ],
+    "z_mm": 177.32245028979506
+  },
+  "medium": {
+    "type": "microct_skull",
+    "nrrd_path": "~/.cache/fullwave25/skull_microCT_zenodo/halle_skull.nrrd",
+    "lower_threshold": 700,
+    "upper_threshold": 1973,
+    "speed_range_mps": [
+      1540,
+      2900
+    ],
+    "density_range_kgm3": [
+      1000,
+      2200
+    ],
+    "blur_sigma_m": 0.0,
+    "background": "tissue",
+    "c_min": 1540.0,
+    "c_max": 2900.0,
+    "rho_min": 1000.0,
+    "rho_max": 2200.0,
+    "alpha_min": 0.5,
+    "alpha_max": 20.0,
+    "beta_min": 4.8,
+    "beta_max": 5.5,
+    "skull_voxel_count": 25366
+  },
+  "excitation": {
+    "ncycles": 2,
+    "drop_off": 2.0,
+    "p0_mpa": 0.39999999999999997,
+    "n_tic": 192,
+    "n_tic_duration_us": 7.680000000000001,
+    "cw_correction": 2.6091273022369776,
+    "n_total_sources": 73760
+  },
+  "sequence": {
+    "profile": "yaakub_human",
+    "envelope": "rectangular CW tone-burst (no nested sub-bursts)",
+    "carrier_khz": 500.0,
+    "ncycles_per_pulse": 2,
+    "tone_burst_ms": 20.0,
+    "prf_hz": 5.0,
+    "pulse_period_ms": 200.0,
+    "duty_cycle_pct": 10.0,
+    "isi_ms": 180.0,
+    "session_s": 80.0,
+    "n_pulses_per_session": 400,
+    "arf_push_ms": 20.0,
+    "i_sppa_w_cm2": 30.0
+  },
+  "repro": {
+    "host": "germignaga",
+    "python": "3.10.12",
+    "fullwave_path": "~/fullwave25-speckle/fullwave",
+    "fullwave_git_sha": "2f8dea3",
+    "neuromod_git_sha": "dbc4dbe",
+    "amun_git_sha": "90fea5a",
+    "generated_at": "2026-06-05T14:07:24-04:00"
+  },
+  "figures": {
+    "bowl_geometry": "fig_inputs_bowl_geometry.png",
+    "placement_3d": "fig_inputs_placement_3d.png",
+    "medium": "fig_inputs_medium.png",
+    "excitation": "fig_inputs_excitation.png",
+    "sequence": "fig_inputs_sequence.png"
+  },
+  "acoustic_outputs": {
+    "transcranial": {
+      "pnp_mpa": 0.48461525,
+      "ppp_mpa": 0.5,
+      "mi": 0.685349459082828,
+      "ti_soft": 4.146902285752815,
+      "ti_cranial": 21.771237000202277,
+      "isppa_w_cm2": 8.116883083636363,
+      "ispta_w_cm2": 8.116883083636363,
+      "arf_n_per_m3": 323.0233154296875,
+      "minus_6db_vol_mm3": 160.81648844800003,
+      "fwhm_x_mm": 22.176000000000002,
+      "fwhm_y_mm": 3.696,
+      "fwhm_z_mm": 3.696,
+      "mean_I_w_cm2": 5.294805283334341,
+      "peak_v_m_per_s": 1.649144820703441e-08,
+      "arf_impulse_pa_s": 6.46046630859375,
+      "peak_idx": [
+        "53",
+        "32",
+        "32"
+      ]
+    },
+    "homogeneous": null,
+    "duty_cycle_session": 1.0,
+    "pulse_duration_s": 0.02,
+    "nt_saved": 603,
+    "n_tic": 192,
+    "sampling_modulus_time": 7,
+    "n_source_steps": 27,
+    "silence_correction": 22.333333333333332,
+    "cw_correction": 2.6091273022369776,
+    "pulse_norm": 58.27050974995917,
+    "snapshots": {
+      "t_early_us": 49.99999999999999,
+      "t_focal_us": 159.0,
+      "t_post_us": 268.0,
+      "frame_early": 50,
+      "frame_focal": 159,
+      "frame_post": 268,
+      "peak_mpa_early": 0.16377633810043335,
+      "peak_mpa_focal": 0.5,
+      "peak_mpa_post": 0.07019821554422379,
+      "global_peak_mpa": 0.5
+    }
+  },
+  "figures_acoustic_outputs": {
+    "intensity_combined": "acoustic_intensity_combined.png",
+    "pulse_norm": "acoustic_pulse_norm.png",
+    "pressure_snapshots": "acoustic_pressure_snapshots.png"
+  },
+  "thermal_outputs": {
+    "peak_dT_final_K": 0.9388250941608255,
+    "peak_dT_history_K": 0.9388250708580017,
+    "dT_focus_K": 0.23349034386139506,
+    "dT_per_burst_K": 0.02218748822528197,
+    "cem43_peak_min": 0.0008109594609047425,
+    "dT_brain_peak_K": 0.7424543574704666,
+    "dT_skull_peak_K": 0.9388250941608255,
+    "duty_in_burst": 1.0,
+    "duty_session": 0.09999999999999999,
+    "group_period_s": 0.2,
+    "group_on_s": 0.02,
+    "n_groups": 400,
+    "t_total_s": 80.0,
+    "dt_heat_s": 1.4980625267450982,
+    "absorption_fraction_skull": 0.3
+  },
+  "figures_thermal_outputs": {
+    "ortho": "thermal_ortho_dT.png",
+    "iso_3d": "thermal_3d_dT.png",
+    "time_history": "thermal_time_history.png"
+  },
+  "displacement_outputs": {
+    "peak_ux_um": 0.4017020387436787,
+    "time_to_peak_ms": 19.97522448569679,
+    "u_on_end_um": 0.4015041383809148,
+    "relax_tau_ms": 32.61974648185053,
+    "field_max_um": 0.4015418824110384,
+    "t_pulse_on_ms": 20.0,
+    "t_period_ms": 200.0,
+    "n_steps_shear": 6018,
+    "dt_shear_us": 33.236646398829926
+  },
+  "figures_displacement_outputs": {
+    "trace": "fig_disp_trace.png",
+    "snapshots": "fig_disp_snapshots.png"
+  },
+  "elastic_outputs": {
+    "membrane_K_A_N_per_m": 0.25,
+    "membrane_coupling_factor": 1000.0,
+    "arf": {
+      "peak": 323.0233154296875,
+      "peak_brain": 323.0233154296875,
+      "peak_skull": 18.05659294128418,
+      "peak_focal_voxel": 323.0233154296875,
+      "peak_idx": [
+        53,
+        32,
+        32
+      ],
+      "units": "N/m$^3$"
+    },
+    "strain": {
+      "peak": 2.6094601707882248e-05,
+      "peak_brain": 2.6094601707882248e-05,
+      "peak_skull": 0.0,
+      "peak_focal_voxel": 2.6094601707882248e-05,
+      "peak_idx": [
+        53,
+        32,
+        30
+      ],
+      "units": "\u2014"
+    },
+    "tension": {
+      "peak": 6.523650646209717,
+      "peak_brain": 6.523650646209717,
+      "peak_skull": 0.0,
+      "peak_focal_voxel": 6.523650646209717,
+      "peak_idx": [
+        53,
+        32,
+        30
+      ],
+      "units": "mN/m"
+    },
+    "eeq_time": {
+      "present": true,
+      "t_used_ms": [
+        5.982596351789387,
+        9.970993919648977,
+        19.941987839297955,
+        91.7331440607706,
+        197.42567960904978
+      ],
+      "eeq_field_max": 2.6094599888892844e-05,
+      "eeq_field_max_per_snapshot": [
+        2.552373734943103e-05,
+        2.5797013222472742e-05,
+        2.6094599888892844e-05,
+        3.120437952475186e-07,
+        1.3892975658791329e-08
+      ]
+    },
+    "tension_time": {
+      "present": true,
+      "t_used_ms": [
+        5.982596351789387,
+        9.970993919648977,
+        19.941987839297955,
+        91.7331440607706,
+        197.42567960904978
+      ],
+      "K_A": 0.25,
+      "coupling_factor": 1000.0,
+      "tension_field_max_mNm": 6.523650169372559,
+      "tension_field_max_per_snapshot_mNm": [
+        6.380934238433838,
+        6.449253082275391,
+        6.523650169372559,
+        0.07801094651222229,
+        0.003473243908956647
+      ],
+      "n_above_threshold_per_snapshot": [
+        3053,
+        4311,
+        6182,
+        0,
+        0
+      ]
+    },
+    "depolarization": {
+      "delta_V_peak_mV": 52.99175262451172,
+      "delta_V_peak_brain_mV": 52.99175262451172,
+      "delta_V_min_mV": -0.29719993472099304,
+      "g_leak_mS_cm2": 0.0167,
+      "E_L_mV": -70.3,
+      "V_rest_mV": -70.0,
+      "g_piezo1_mS_cm2": 0.1,
+      "g_trek1_mS_cm2": 0.04,
+      "use_trek1": true,
+      "peak_idx": [
+        45,
+        26,
+        30
+      ]
+    }
+  },
+  "figures_elastic_outputs": {
+    "arf_ortho": "elastic_arf_ortho.png",
+    "arf_3d": "elastic_arf_3d.png",
+    "strain_ortho": "elastic_strain_ortho.png",
+    "strain_3d": "elastic_strain_3d.png",
+    "tension_ortho": "elastic_tension_ortho.png",
+    "tension_3d": "elastic_tension_3d.png",
+    "eeq_time": "elastic_eeq_time.png",
+    "tension_time": "elastic_tension_time.png",
+    "depolarization_ortho": "elastic_depolarization_ortho.png",
+    "depolarization_3d": "elastic_depolarization_3d.png"
+  },
+  "neural_outputs": {
+    "tension_threshold_mNm": 0.5,
+    "membrane_K_a_N_per_m": 0.25,
+    "neural_coupling_factor": 1000.0,
+    "piezo1_g_density_mS_cm2": 0.1,
+    "use_trek1": true,
+    "T_peak_max_mNm": 6.523650646209717,
+    "n_eligible_voxels": 87849,
+    "n_voxels_above_threshold": 5468,
+    "n_voxels_with_spike": 5468,
+    "active_fraction_burst": 1.0,
+    "peak_rate_hz": 300.0,
+    "median_latency_ms": 2.7929999828338623,
+    "p10_latency_ms": 2.0220000743865967,
+    "p90_latency_ms": 11.449398040771484,
+    "spikes_per_neuron_burst_mean": 3.7337234820775422,
+    "iso50_volume_mm3": 7025.436594176001,
+    "iso25_volume_mm3": 8523.273887744,
+    "firing_volume_at_pulse_end_mm3": 10224.936730624,
+    "firing_volume_final_mm3": 10224.936730624,
+    "firing_volume_peak_active_mm3": 1065.87672576,
+    "voxel_volume_mm3": 1.869959168,
+    "T_pulse_ms": 20.0,
+    "duration_ms": 20.0,
+    "group_period_ms": 200.0,
+    "n_groups_session": 400,
+    "peak_idx": [
+      42,
+      27,
+      31
+    ]
+  },
+  "figures_neural_outputs": {
+    "latency_ortho": "neural_latency_ortho.png",
+    "rate_ortho": "neural_rate_ortho.png",
+    "rate_3d": "neural_rate_3d.png",
+    "snapshot_row": "neural_snapshot_row.png",
+    "raster": "neural_raster.png",
+    "psth": "neural_psth.png",
+    "distrib": "neural_distrib.png",
+    "volume_t": "neural_volume_t.png",
+    "gating": "neural_gating.png",
+    "representative": "neural_representative.png"
+  },
+  "astrocyte_outputs": {
+    "present": true,
+    "figure": "astrocyte_pathway.png",
+    "focal_tension_mNm": 6.523650646209717,
+    "peak_drive": 0.03951090772355507,
+    "n_recruited": 0,
+    "drive_threshold": 0.05,
+    "tau_Ca_ms": 300.0,
+    "trpa1_T_half_mNm": 6.0,
+    "focal_depolarisation_mV": 11.077824263474518,
+    "focal_n_spikes": 0,
+    "duty_cycle": 0.1,
+    "session_s": 80.0
+  },
+  "synaptic_outputs": {
+    "present": true,
+    "figure": "synaptic_pathway.png",
+    "focal_tension_mNm": 6.554851055145264,
+    "peak_combined_gain": 11.646407876565954,
+    "n_recruited": 32191,
+    "gain_threshold": 1.5,
+    "focal_depolarisation_mV": 116.03157726035265,
+    "focal_n_spikes": 11,
+    "Pr_baseline": 0.1,
+    "Pr_max": 0.6,
+    "k_mechano_nav": 0.3,
+    "alpha_NMDA": 1.0
+  },
+  "animations": {
+    "pressure": {
+      "available": true,
+      "prefix": "pressanim/frame",
+      "first": 0,
+      "last": 119,
+      "n_frames": 120,
+      "fps": 10,
+      "duration_s": 12.0,
+      "mp4": "wave_propagation_3d.mp4"
+    },
+    "shear": {
+      "available": true,
+      "prefix": "shearanim/frame",
+      "first": 0,
+      "last": 119,
+      "n_frames": 120,
+      "fps": 10,
+      "duration_s": 12.0,
+      "mp4": "shear_propagation_3d.mp4"
+    },
+    "temperature": {
+      "available": true,
+      "prefix": "tempanim/frame",
+      "first": 0,
+      "last": 119,
+      "n_frames": 120,
+      "fps": 10,
+      "duration_s": 12.0,
+      "mp4": "temperature_3d.mp4"
+    },
+    "neural": {
+      "available": true,
+      "prefix": "neuralanim/frame",
+      "first": 0,
+      "last": 119,
+      "n_frames": 120,
+      "fps": 10,
+      "duration_s": 12.0,
+      "mp4": "neural_firing_3d.mp4"
+    }
+  }
+}

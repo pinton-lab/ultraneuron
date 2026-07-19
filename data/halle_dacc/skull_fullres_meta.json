@@ -1,0 +1,12 @@
+{
+  "shape": [
+    422,
+    260,
+    260
+  ],
+  "dx_mm": 0.308,
+  "dy_mm": 0.308,
+  "dz_mm": 0.308,
+  "sim_data_dir": "data/halle_dacc",
+  "sim_name": "halle_dacc"
+}

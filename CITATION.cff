@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+title: "ultraneuron: an open-source framework for predicting ultrasound neuromodulation"
+message: "If you use this software, please cite it using the metadata below, and the accompanying manuscript."
+type: software
+authors:
+  - family-names: "Pinton"
+    given-names: "Gianmarco F"
+    orcid: "https://orcid.org/0000-0002-7367-2090"
+    affiliation: "Joint Department of Biomedical Engineering, University of North Carolina at Chapel Hill and North Carolina State University"
+    email: "gia@email.unc.edu"
+repository-code: "https://github.com/pinton-lab/ultraneuron"
+license: Apache-2.0
+keywords:
+  - "transcranial focused ultrasound"
+  - "neuromodulation"
+  - "Hodgkin-Huxley"
+  - "mechanosensitive ion channels"
+  - "intramembrane cavitation"
+  - "computational neuroscience"
+preferred-citation:
+  type: article
+  title: "An open-source framework for predicting ultrasound neuromodulation: bridging tissue elastomechanics, intramembrane cavitation, and a multi-pathway Hodgkin-Huxley neuron"
+  authors:
+    - family-names: "Pinton"
+      given-names: "Gianmarco F"
+      orcid: "https://orcid.org/0000-0002-7367-2090"
+  journal: "Journal of Neural Engineering"
+  year: 2026
+  status: "submitted"

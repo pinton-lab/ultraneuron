@@ -1,0 +1,639 @@
+{
+  "elastic_outputs": {
+    "membrane_K_A_N_per_m": 0.25,
+    "membrane_coupling_factor": 1000.0,
+    "arf": {
+      "peak": 312.24603271484375,
+      "peak_brain": 312.24603271484375,
+      "peak_skull": 19.809093475341797,
+      "peak_focal_voxel": 312.24603271484375,
+      "peak_idx": [
+        52,
+        34,
+        32
+      ],
+      "units": "N/m$^3$"
+    },
+    "strain": {
+      "peak": 2.362821760470979e-05,
+      "peak_brain": 2.362821760470979e-05,
+      "peak_skull": 0.0,
+      "peak_focal_voxel": 2.362821760470979e-05,
+      "peak_idx": [
+        52,
+        34,
+        34
+      ],
+      "units": "\u2014"
+    },
+    "tension": {
+      "peak": 5.907054424285889,
+      "peak_brain": 5.907054424285889,
+      "peak_skull": 0.0,
+      "peak_focal_voxel": 5.907054424285889,
+      "peak_idx": [
+        52,
+        34,
+        34
+      ],
+      "units": "mN/m"
+    },
+    "eeq_time": {
+      "present": true,
+      "t_used_ms": [
+        7.976795135719183,
+        15.953590271438365,
+        29.912981758946934,
+        97.71574041255998,
+        197.42567960904978
+      ],
+      "eeq_field_max": 1.96738892555004e-05,
+      "eeq_field_max_per_snapshot": [
+        1.9110419088974595e-05,
+        1.9446382793830708e-05,
+        1.96738892555004e-05,
+        3.5260219988231256e-07,
+        1.850377806533743e-08
+      ]
+    },
+    "tension_time": {
+      "present": true,
+      "t_used_ms": [
+        7.976795135719183,
+        15.953590271438365,
+        29.912981758946934,
+        97.71574041255998,
+        197.42567960904978
+      ],
+      "K_A": 0.25,
+      "coupling_factor": 1000.0,
+      "tension_field_max_mNm": 4.9184722900390625,
+      "tension_field_max_per_snapshot_mNm": [
+        4.777604579925537,
+        4.861595630645752,
+        4.9184722900390625,
+        0.08815055340528488,
+        0.004625944420695305
+      ],
+      "n_above_threshold_per_snapshot": [
+        3172,
+        4612,
+        6329,
+        0,
+        0
+      ]
+    },
+    "depolarization": {
+      "delta_V_peak_mV": 52.99174880981445,
+      "delta_V_peak_brain_mV": 52.99174880981445,
+      "delta_V_min_mV": -0.29719993472099304,
+      "g_leak_mS_cm2": 0.0167,
+      "E_L_mV": -70.3,
+      "V_rest_mV": -70.0,
+      "g_piezo1_mS_cm2": 0.1,
+      "g_trek1_mS_cm2": 0.04,
+      "use_trek1": true,
+      "peak_idx": [
+        48,
+        30,
+        36
+      ]
+    }
+  },
+  "figures_elastic_outputs": {
+    "arf_ortho": "elastic_arf_ortho.png",
+    "arf_3d": "elastic_arf_3d.png",
+    "strain_ortho": "elastic_strain_ortho.png",
+    "strain_3d": "elastic_strain_3d.png",
+    "tension_ortho": "elastic_tension_ortho.png",
+    "tension_3d": "elastic_tension_3d.png",
+    "eeq_time": "elastic_eeq_time.png",
+    "tension_time": "elastic_tension_time.png",
+    "depolarization_ortho": "elastic_depolarization_ortho.png",
+    "depolarization_3d": "elastic_depolarization_3d.png"
+  },
+  "sim_name": "halle_caudate",
+  "sim_title": "Halle CTX-500 Transcranial Bowl @ 500 kHz (F3 to left caudate)",
+  "grid": {
+    "f0_hz": 500000.0,
+    "c0_mps": 1540.0,
+    "ppw": 10,
+    "cfl": 0.2,
+    "dx_m": 0.000308,
+    "dy_m": 0.000308,
+    "dz_m": 0.000308,
+    "nx": 422,
+    "ny": 260,
+    "nz": 260,
+    "domain_x_mm": 129.976,
+    "domain_y_mm": 80.08,
+    "domain_z_mm": 80.08,
+    "duration_s": 0.00016883116883116884,
+    "dt_s": 4.000000000000001e-08,
+    "nt": 4221
+  },
+  "source": {
+    "type": "tips_bowl",
+    "n_layers": 3,
+    "roc_mm": 63.0,
+    "outer_radius_mm": 32.0,
+    "inner_radius_mm": 0.0,
+    "n_elements": 4,
+    "p0_mpa": 0.39999999999999997,
+    "ncycles": 2,
+    "drop_off": 2.0,
+    "n_source_voxels": 73760
+  },
+  "placement": {
+    "scalp_site": "F3",
+    "target_name": "caudate_left",
+    "focal_length_mm": 63.0,
+    "bowl_radius_mm": 32.0,
+    "xdc_center_lps": [
+      123.36246650029844,
+      149.8240007569902,
+      147.18369643008054
+    ],
+    "scalp_contact_lps": [
+      117.40865325927734,
+      146.57421875,
+      141.68447875976562
+    ],
+    "focus_lps": [
+      80.40736210967846,
+      126.37772864431614,
+      107.50837247675352
+    ],
+    "target_lps": [
+      80.62065887451172,
+      126.78203582763672,
+      107.7554702758789
+    ],
+    "perp_residual_mm": 0.25720121315210187,
+    "scalp_target_dist_mm": 53.816955064231315,
+    "apex_target_dist_mm": 62.54901505693103,
+    "bowl_depth_mm": 8.73214579513946,
+    "eeg_to_placement_mm": 16.438180640830385,
+    "beam_dir_3d": [
+      -0.6818270538193647,
+      -0.37216304940752454,
+      -0.6297670468782067
+    ],
+    "normal_2d": [
+      -0.8777562441480784,
+      -0.47910747839757645
+    ],
+    "tangent_2d": [
+      0.47910747839757645,
+      -0.8777562441480784
+    ],
+    "z_mm": 147.18369643008054
+  },
+  "medium": {
+    "type": "microct_skull",
+    "nrrd_path": "~/.cache/fullwave25/skull_microCT_zenodo/halle_skull.nrrd",
+    "lower_threshold": 700,
+    "upper_threshold": 1973,
+    "speed_range_mps": [
+      1540,
+      2900
+    ],
+    "density_range_kgm3": [
+      1000,
+      2200
+    ],
+    "blur_sigma_m": 0.0,
+    "background": "tissue",
+    "c_min": 1540.0,
+    "c_max": 2900.0,
+    "rho_min": 1000.0,
+    "rho_max": 2200.0,
+    "alpha_min": 0.5,
+    "alpha_max": 20.0,
+    "beta_min": 4.8,
+    "beta_max": 5.5,
+    "skull_voxel_count": 22185
+  },
+  "excitation": {
+    "ncycles": 2,
+    "drop_off": 2.0,
+    "p0_mpa": 0.39999999999999997,
+    "n_tic": 192,
+    "n_tic_duration_us": 7.680000000000001,
+    "cw_correction": 2.6091273022369776,
+    "n_total_sources": 73760
+  },
+  "sequence": {
+    "profile": "yaakub_human",
+    "envelope": "rectangular CW tone-burst (no nested sub-bursts)",
+    "carrier_khz": 500.0,
+    "ncycles_per_pulse": 2,
+    "tone_burst_ms": 30.0,
+    "prf_hz": 5.0,
+    "pulse_period_ms": 200.0,
+    "duty_cycle_pct": 15.0,
+    "isi_ms": 170.0,
+    "session_s": 80.0,
+    "n_pulses_per_session": 400,
+    "arf_push_ms": 30.0,
+    "i_sppa_w_cm2": 30.0
+  },
+  "repro": {
+    "host": "germignaga",
+    "python": "3.10.12",
+    "fullwave_path": "~/fullwave25-speckle/fullwave",
+    "fullwave_git_sha": "2f8dea3",
+    "neuromod_git_sha": "e1f86bf",
+    "amun_git_sha": null,
+    "generated_at": "2026-05-12T13:21:55-04:00"
+  },
+  "figures": {
+    "bowl_geometry": "fig_inputs_bowl_geometry.png",
+    "placement_3d": "fig_inputs_placement_3d.png",
+    "medium": "fig_inputs_medium.png",
+    "excitation": "fig_inputs_excitation.png",
+    "sequence": "fig_inputs_sequence.png"
+  },
+  "acoustic_outputs": {
+    "transcranial": {
+      "pnp_mpa": 0.47338465625,
+      "ppp_mpa": 0.49683565625,
+      "mi": 0.6694670010880754,
+      "ti_soft": 4.094579499025469,
+      "ti_cranial": 21.496542369883713,
+      "isppa_w_cm2": 8.014469784935065,
+      "ispta_w_cm2": 8.014469784935065,
+      "arf_n_per_m3": 312.2460334112203,
+      "minus_6db_vol_mm3": 115.93746841600003,
+      "fwhm_x_mm": 18.48,
+      "fwhm_y_mm": 3.696,
+      "fwhm_z_mm": 3.696,
+      "mean_I_w_cm2": 5.263899309526602,
+      "peak_v_m_per_s": 2.1971230168560396e-08,
+      "arf_impulse_pa_s": 9.367381002336609,
+      "peak_idx": [
+        "53",
+        "34",
+        "32"
+      ]
+    },
+    "homogeneous": null,
+    "duty_cycle_session": 1.0,
+    "pulse_duration_s": 0.03,
+    "nt_saved": 603,
+    "n_tic": 192,
+    "sampling_modulus_time": 7,
+    "n_source_steps": 27,
+    "silence_correction": 22.333333333333332,
+    "cw_correction": 2.6091273022369776,
+    "pulse_norm": 58.27050974995917,
+    "snapshots": {
+      "t_early_us": 52.0,
+      "t_focal_us": 160.99999999999997,
+      "t_post_us": 270.0,
+      "frame_early": 52,
+      "frame_focal": 161,
+      "frame_post": 270,
+      "peak_mpa_early": 0.19825853407382965,
+      "peak_mpa_focal": 0.4968356490135193,
+      "peak_mpa_post": 0.06436910480260849,
+      "global_peak_mpa": 0.4968356490135193
+    }
+  },
+  "figures_acoustic_outputs": {
+    "intensity_combined": "acoustic_intensity_combined.png",
+    "pulse_norm": "acoustic_pulse_norm.png",
+    "pressure_snapshots": "acoustic_pressure_snapshots.png"
+  },
+  "thermal_outputs": {
+    "peak_dT_final_K": 0.10415733419423756,
+    "peak_dT_history_K": 0.10415733605623245,
+    "dT_focus_K": 0.048321351450090484,
+    "dT_per_burst_K": 0.003187382595871026,
+    "cem43_peak_min": 0.0003526899626737614,
+    "dT_brain_peak_K": 0.06705731210487735,
+    "dT_skull_peak_K": 0.10415733419423756,
+    "duty_in_burst": 0.15,
+    "duty_session": 0.022499999999999996,
+    "group_period_s": 0.2,
+    "group_on_s": 0.03,
+    "n_groups": 400,
+    "t_total_s": 80.0,
+    "dt_heat_s": 1.4980625267450982,
+    "absorption_fraction_skull": 0.3
+  },
+  "figures_thermal_outputs": {
+    "ortho": "thermal_ortho_dT.png",
+    "iso_3d": "thermal_3d_dT.png",
+    "time_history": "thermal_time_history.png"
+  },
+  "neural_outputs": {
+    "tension_threshold_mNm": 0.5,
+    "membrane_K_a_N_per_m": 0.25,
+    "neural_coupling_factor": 1000.0,
+    "piezo1_g_density_mS_cm2": 0.1,
+    "use_trek1": true,
+    "T_peak_max_mNm": 5.907054424285889,
+    "n_eligible_voxels": 149175,
+    "n_voxels_above_threshold": 5066,
+    "n_voxels_with_spike": 5066,
+    "active_fraction_burst": 1.0,
+    "peak_rate_hz": 266.66668701171875,
+    "median_latency_ms": 3.573500156402588,
+    "p10_latency_ms": 2.0320000648498535,
+    "p90_latency_ms": 15.588500022888184,
+    "spikes_per_neuron_burst_mean": 5.035925779707856,
+    "iso50_volume_mm3": 6017.528602624001,
+    "iso25_volume_mm3": 8182.941319168001,
+    "firing_volume_at_pulse_end_mm3": 9472.144596992,
+    "firing_volume_final_mm3": 9473.213145088,
+    "firing_volume_peak_active_mm3": 1000.4281548800001,
+    "voxel_volume_mm3": 1.869959168,
+    "T_pulse_ms": 30.0,
+    "duration_ms": 30.0,
+    "group_period_ms": 200.0,
+    "n_groups_session": 400,
+    "peak_idx": [
+      40,
+      28,
+      33
+    ]
+  },
+  "figures_neural_outputs": {
+    "latency_ortho": "neural_latency_ortho.png",
+    "rate_ortho": "neural_rate_ortho.png",
+    "rate_3d": "neural_rate_3d.png",
+    "snapshot_row": "neural_snapshot_row.png",
+    "raster": "neural_raster.png",
+    "psth": "neural_psth.png",
+    "distrib": "neural_distrib.png",
+    "volume_t": "neural_volume_t.png",
+    "gating": "neural_gating.png",
+    "representative": "neural_representative.png"
+  },
+  "displacement_outputs": {
+    "peak_ux_um": 0.41115495719168393,
+    "time_to_peak_ms": 29.979455051744594,
+    "u_on_end_um": 0.41091502112067246,
+    "relax_tau_ms": 33.315960474215316,
+    "field_max_um": 0.41209594314750575,
+    "t_pulse_on_ms": 30.0,
+    "t_period_ms": 200.0,
+    "n_steps_shear": 6018,
+    "dt_shear_us": 33.236646398829926
+  },
+  "figures_displacement_outputs": {
+    "trace": "fig_disp_trace.png",
+    "snapshots": "fig_disp_snapshots.png"
+  },
+  "provenance": [
+    {
+      "group": "Source",
+      "param": "$f_0$ carrier",
+      "value": "500 kHz",
+      "prov": "literature",
+      "ref": "Yaakub 2023",
+      "note": "Yaakub theta-burst protocol carrier"
+    },
+    {
+      "group": "Source",
+      "param": "Bowl ROC",
+      "value": "63.0 mm",
+      "prov": "literature",
+      "ref": "NeuroFUS CTX-500 spec",
+      "note": "hardware-fixed"
+    },
+    {
+      "group": "Source",
+      "param": "Bowl outer aperture",
+      "value": "32.0 mm",
+      "prov": "literature",
+      "ref": "NeuroFUS CTX-500 spec",
+      "note": "hardware-fixed"
+    },
+    {
+      "group": "Source",
+      "param": "$p_0$ source pressure",
+      "value": "0.400 MPa",
+      "prov": "calibrated",
+      "ref": "this run; calibrated to focal PNP",
+      "note": "set so transcranial focal PNP $\\approx$ 0.5 MPa (manuscript)"
+    },
+    {
+      "group": "Source",
+      "param": "Focal PNP transcranial",
+      "value": "n/a",
+      "prov": "derived",
+      "ref": "from FDTD output",
+      "note": "propagation\\_map.npy peak-negative in brain"
+    },
+    {
+      "group": "Skull",
+      "param": "HU thresholds",
+      "value": "700 -- 1973",
+      "prov": "calibrated",
+      "ref": "Aubry-style HU mapping",
+      "note": "trabecular -- cortical bone cutoffs"
+    },
+    {
+      "group": "Skull",
+      "param": "$c$ range",
+      "value": "1540 -- 2900 m/s",
+      "prov": "literature",
+      "ref": "Aubry 2003; Pichardo 2011",
+      "note": "HU-mapped"
+    },
+    {
+      "group": "Skull",
+      "param": "$\\rho$ range",
+      "value": "1000 -- 2200 kg/m$^3$",
+      "prov": "literature",
+      "ref": "Aubry 2003",
+      "note": "HU-mapped"
+    },
+    {
+      "group": "Skull",
+      "param": "$\\alpha_0$ range",
+      "value": "0.50 -- 20.00 dB/(MHz cm)",
+      "prov": "literature",
+      "ref": "Pinton 2012",
+      "note": "0.5 (soft tissue) up to 20 (cortical bone)"
+    },
+    {
+      "group": "Skull",
+      "param": "$f_{abs}^{\\mathrm{skull}}$",
+      "value": "0.30",
+      "prov": "literature",
+      "ref": "Pinton 2012",
+      "note": "fraction of attenuated energy converted to heat"
+    },
+    {
+      "group": "Sequence",
+      "param": "Tone-burst duration",
+      "value": "n/a",
+      "prov": "literature",
+      "ref": "Yaakub 2023",
+      "note": "protocol-anchored"
+    },
+    {
+      "group": "Sequence",
+      "param": "PRF",
+      "value": "n/a",
+      "prov": "literature",
+      "ref": "Yaakub 2023",
+      "note": "protocol-anchored"
+    },
+    {
+      "group": "Sequence",
+      "param": "Duty cycle",
+      "value": "n/a",
+      "prov": "derived",
+      "ref": "duration $\\times$ PRF",
+      "note": ""
+    },
+    {
+      "group": "Sequence",
+      "param": "Session duration",
+      "value": "n/a",
+      "prov": "literature",
+      "ref": "Yaakub 2023",
+      "note": "protocol-anchored"
+    },
+    {
+      "group": "Bioheat",
+      "param": "$dt_{\\mathrm{heat}}$",
+      "value": "1.498 s",
+      "prov": "derived",
+      "ref": "Pennes CFL stability",
+      "note": ""
+    },
+    {
+      "group": "Bioheat",
+      "param": "brain $k$",
+      "value": "0.51 W/(m K)",
+      "prov": "literature",
+      "ref": "Pennes 1948 / IT'IS DB",
+      "note": "hardcoded in run\\_bioheat.py"
+    },
+    {
+      "group": "Bioheat",
+      "param": "brain $\\rho c$",
+      "value": "$1040 \\times 3630$ J/(m$^3$ K)",
+      "prov": "literature",
+      "ref": "IT'IS DB",
+      "note": ""
+    },
+    {
+      "group": "Bioheat",
+      "param": "brain $w_b$",
+      "value": "9240 W/(m$^3$ K)",
+      "prov": "literature",
+      "ref": "Pennes 1948 / Sapareto-Dewey",
+      "note": "cerebral perfusion"
+    },
+    {
+      "group": "Shear",
+      "param": "$\\mu$ shear modulus",
+      "value": "4580 Pa",
+      "prov": "literature",
+      "ref": "Salahshoor 2020/2022",
+      "note": ""
+    },
+    {
+      "group": "Shear",
+      "param": "$\\eta$ viscosity",
+      "value": "0.5 Pa$\\cdot$s",
+      "prov": "literature",
+      "ref": "Salahshoor 2022",
+      "note": ""
+    },
+    {
+      "group": "Shear",
+      "param": "$\\rho_0$ brain density",
+      "value": "1000 kg/m$^3$",
+      "prov": "literature",
+      "ref": "manuscript Methods",
+      "note": ""
+    },
+    {
+      "group": "Coupling",
+      "param": "$K_A$ bilayer modulus",
+      "value": "0.25 N/m",
+      "prov": "literature",
+      "ref": "Rawicz 2000",
+      "note": "lipid-bilayer area-expansion modulus"
+    },
+    {
+      "group": "Coupling",
+      "param": "$\\alpha$ multi-scale gain",
+      "value": "1000",
+      "prov": "calibrated",
+      "ref": "this run; cortical-pyramidal calibration",
+      "note": "literature value 200 from Salahshoor underpredicts firing"
+    },
+    {
+      "group": "Channels",
+      "param": "Piezo1 $T_{1/2}$",
+      "value": "2.7 mN/m",
+      "prov": "literature",
+      "ref": "Coste 2010 / Lewis 2015",
+      "note": ""
+    },
+    {
+      "group": "Channels",
+      "param": "Piezo1 $\\Delta A$",
+      "value": "18 nm$^2$",
+      "prov": "literature",
+      "ref": "Coste 2010",
+      "note": "Boltzmann steepness"
+    },
+    {
+      "group": "Channels",
+      "param": "Piezo1 $\\tau_{\\mathrm{inact}}$",
+      "value": "12 ms",
+      "prov": "literature",
+      "ref": "Coste 2010 Fig. 2",
+      "note": ""
+    },
+    {
+      "group": "Channels",
+      "param": "Piezo1 $\\bar g$ density",
+      "value": "0.500 mS/cm$^2$",
+      "prov": "calibrated",
+      "ref": "this run",
+      "note": "manuscript-cited 0.1; tuned per cell type"
+    },
+    {
+      "group": "Neuron",
+      "param": "cell type",
+      "value": "cortical pyramidal (3-comp)",
+      "prov": "literature",
+      "ref": "Pospischil 2008",
+      "note": "dendrite / soma / AIS skeleton"
+    },
+    {
+      "group": "Neuron",
+      "param": "AIS $\\bar g_{\\mathrm{Na}}$",
+      "value": "2000 mS/cm$^2$",
+      "prov": "literature",
+      "ref": "Kole 2008 / Hu 2009",
+      "note": ""
+    },
+    {
+      "group": "Neuron",
+      "param": "dendrite Piezo1 scale",
+      "value": "$5 \\times$ soma",
+      "prov": "assumed",
+      "ref": "modelling assumption",
+      "note": "dendrite-heavy expression"
+    },
+    {
+      "group": "Threshold",
+      "param": "tension threshold",
+      "value": "0.50 mN/m",
+      "prov": "assumed",
+      "ref": "eligibility cutoff",
+      "note": "voxels below skip the integration"
+    }
+  ]
+}

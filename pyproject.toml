@@ -1,0 +1,45 @@
+[project]
+name = "ultraneuron"
+version = "0.1.0"
+description = "Predicting neural firing from acoustoelastic interactions of ultrasound with neurons"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.0.0",
+]
+authors = [{ name = "Gianmarco Pinton" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["neuromodulation", "ultrasound", "hodgkin-huxley", "mechanosensitive", "acoustoelastic"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.optional-dependencies]
+fast = ["numba>=0.60.0"]
+gpu = ["numba>=0.60.0"]  # CUDA backend uses numba.cuda; requires CUDA toolkit + NVIDIA driver
+docs = ["matplotlib>=3.10.0", "scipy>=1.13.0"]
+test = ["pytest>=8.0.0"]
+dev = ["pytest>=8.0.0", "ruff>=0.12.0", "numba>=0.60.0", "matplotlib>=3.10.0", "scipy>=1.13.0"]
+
+[project.urls]
+Repository = "https://github.com/pinton-lab/ultraneuron"
+Issues = "https://github.com/pinton-lab/ultraneuron/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ultraneuron"]
+
+[tool.hatch.build]
+exclude = ["tests", "docs", ".vscode", ".github"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,11 @@
+{
+  "target_in_brain_peak_Pa": 500000.0,
+  "observed_in_brain_peak_Pa_before_rescale": 460060.3125,
+  "scale_factor_applied": 1.0868140250632898,
+  "rescaled_in_brain_peak_Pa": 499999.99999999994,
+  "global_pmap_peak_Pa_before_rescale": 460060.3125,
+  "global_pmap_peak_Pa_after_rescale": 500000.0,
+  "brain_mask_voxels": 317705,
+  "brain_mask_total_voxels": 447850,
+  "skull_threshold_mps": 1600.0
+}

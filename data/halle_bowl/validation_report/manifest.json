@@ -1,0 +1,195 @@
+{
+  "sim_name": "halle_bowl",
+  "sim_title": "Halle CTX-500 Transcranial Bowl @ 500 kHz",
+  "grid": {
+    "f0_hz": 500000.0,
+    "c0_mps": 1540.0,
+    "ppw": 10,
+    "cfl": 0.2,
+    "dx_m": 0.000308,
+    "dy_m": 0.000308,
+    "dz_m": 0.000308,
+    "nx": 211,
+    "ny": 214,
+    "nz": 214,
+    "domain_x_mm": 64.988,
+    "domain_y_mm": 65.91199999999999,
+    "domain_z_mm": 65.91199999999999,
+    "duration_s": 8.441558441558442e-05,
+    "dt_s": 4.000000000000001e-08,
+    "nt": 2110
+  },
+  "source": {
+    "type": "tips_bowl",
+    "n_layers": 3,
+    "roc_mm": 63.0,
+    "outer_radius_mm": 32.0,
+    "inner_radius_mm": 0.0,
+    "n_elements": 4,
+    "p0_mpa": 0.39999999999999997,
+    "ncycles": 2,
+    "drop_off": 2.0,
+    "n_source_voxels": 73638
+  },
+  "placement": {
+    "scalp_site": "F3",
+    "target_name": "DLPFC_left",
+    "focal_length_mm": 63.0,
+    "bowl_radius_mm": 32.0,
+    "xdc_center_lps": [
+      123.36246650029844,
+      149.8240007569902,
+      147.18369643008054
+    ],
+    "scalp_contact_lps": [
+      117.40865325927734,
+      146.57421875,
+      141.68447875976562
+    ],
+    "focus_lps": [
+      80.40736210967846,
+      126.37772864431614,
+      107.50837247675352
+    ],
+    "target_lps": [
+      106.97969055175781,
+      141.54185485839844,
+      133.51019287109375
+    ],
+    "perp_residual_mm": 1.098851393024022,
+    "scalp_target_dist_mm": 14.174163089299787,
+    "apex_target_dist_mm": 22.8900412416244,
+    "bowl_depth_mm": 8.73214579513946,
+    "eeg_to_placement_mm": 16.438180640830385,
+    "beam_dir_3d": [
+      -0.6818270538193647,
+      -0.37216304940752454,
+      -0.6297670468782067
+    ],
+    "normal_2d": [
+      -0.8777562441480784,
+      -0.47910747839757645
+    ],
+    "tangent_2d": [
+      0.47910747839757645,
+      -0.8777562441480784
+    ],
+    "z_mm": 147.18369643008054
+  },
+  "medium": {
+    "type": "microct_skull",
+    "nrrd_path": "~/.cache/fullwave25/skull_microCT_zenodo/halle_skull.nrrd",
+    "lower_threshold": 700,
+    "upper_threshold": 1973,
+    "speed_range_mps": [
+      1540,
+      2900
+    ],
+    "density_range_kgm3": [
+      1000,
+      2200
+    ],
+    "blur_sigma_m": 0.0,
+    "background": "tissue",
+    "c_min": 1540.0,
+    "c_max": 2900.0,
+    "rho_min": 1000.0,
+    "rho_max": 2200.0,
+    "alpha_min": 0.5,
+    "alpha_max": 20.0,
+    "beta_min": 4.8,
+    "beta_max": 5.5,
+    "skull_voxel_count": 756180
+  },
+  "excitation": {
+    "ncycles": 2,
+    "drop_off": 2.0,
+    "p0_mpa": 0.39999999999999997,
+    "n_tic": 192,
+    "n_tic_duration_us": 7.680000000000001,
+    "cw_correction": 2.610279118718518,
+    "n_total_sources": 73638
+  },
+  "sequence": {
+    "profile": "yaakub_human",
+    "envelope": "rectangular CW tone-burst (no nested sub-bursts)",
+    "carrier_khz": 500.0,
+    "ncycles_per_pulse": 2,
+    "tone_burst_ms": 80.0,
+    "prf_hz": 5.0,
+    "pulse_period_ms": 200.0,
+    "duty_cycle_pct": 40.0,
+    "isi_ms": 120.0,
+    "session_s": 80.0,
+    "n_pulses_per_session": 400,
+    "arf_push_ms": 80.0,
+    "i_sppa_w_cm2": 30.0
+  },
+  "repro": {
+    "host": "germignaga",
+    "python": "3.10.12",
+    "fullwave_path": "~/fullwave25-speckle/fullwave",
+    "fullwave_git_sha": "2f8dea3",
+    "neuromod_git_sha": "65ab845",
+    "amun_git_sha": null,
+    "generated_at": "2026-05-01T18:07:01-04:00"
+  },
+  "figures": {
+    "bowl_geometry": "fig_inputs_bowl_geometry.png",
+    "placement_3d": "fig_inputs_placement_3d.png",
+    "medium": "fig_inputs_medium.png",
+    "excitation": "fig_inputs_excitation.png",
+    "sequence": "fig_inputs_sequence.png"
+  },
+  "acoustic_outputs": {
+    "transcranial": {
+      "pnp_mpa": 1.3786619999999998,
+      "ppp_mpa": 1.516584875,
+      "mi": 1.9497224983284156,
+      "ti_soft": 1.5057976925668082,
+      "ti_cranial": 7.905437885975743,
+      "isppa_w_cm2": 73.6838185225974,
+      "ispta_w_cm2": 26.526174668135067,
+      "arf_n_per_m3": 5470.533075890555,
+      "minus_6db_vol_mm3": 173.90620262400003,
+      "fwhm_x_mm": 1.232,
+      "fwhm_y_mm": 1.232,
+      "fwhm_z_mm": 1.232,
+      "mean_I_w_cm2": 43.02096749785783,
+      "peak_v_m_per_s": 0.00010181362449657172,
+      "arf_impulse_pa_s": 1.9693919073205999,
+      "peak_idx": [
+        "6",
+        "47",
+        "37"
+      ]
+    },
+    "homogeneous": null,
+    "duty_cycle_session": 0.36,
+    "pulse_duration_s": 0.00036,
+    "nt_saved": 302,
+    "n_tic": 192,
+    "sampling_modulus_time": 7,
+    "n_source_steps": 27,
+    "silence_correction": 11.185185185185185,
+    "cw_correction": 2.610279118718518,
+    "pulse_norm": 29.196455327888607,
+    "snapshots": {
+      "t_early_us": 20.0,
+      "t_focal_us": 74.0,
+      "t_post_us": 128.0,
+      "frame_early": 20,
+      "frame_focal": 74,
+      "frame_post": 128,
+      "peak_mpa_early": 1.1404657363891602,
+      "peak_mpa_focal": 1.516584873199463,
+      "peak_mpa_post": 0.9996339678764343,
+      "global_peak_mpa": 1.516584873199463
+    }
+  },
+  "figures_acoustic_outputs": {
+    "intensity_combined": "acoustic_intensity_combined.png",
+    "pulse_norm": "acoustic_pulse_norm.png",
+    "pressure_snapshots": "acoustic_pressure_snapshots.png"
+  }
+}

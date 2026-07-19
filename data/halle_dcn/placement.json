@@ -1,0 +1,66 @@
+{
+  "xdc_center_lps": [
+    150.3267352671668,
+    55.84257735335476,
+    67.89696867392489
+  ],
+  "scalp_contact_lps": [
+    136.93923950195312,
+    58.92887878417969,
+    69.67683410644531
+  ],
+  "focus_lps": [
+    90.55226447231807,
+    72.74043356370719,
+    57.38625524951695
+  ],
+  "target_lps": [
+    87.74929809570312,
+    73.5328140258789,
+    56.89338302612305
+  ],
+  "normal_3d": [
+    -0.9488011237277577,
+    0.26821993984686393,
+    -0.16683672102234828
+  ],
+  "tangent_3d": [
+    0.2720326025411126,
+    0.9622880354419404,
+    -0.0
+  ],
+  "bitangent_3d": [
+    0.16054498051217062,
+    -0.04538502741913496,
+    -0.9859845376670525
+  ],
+  "beam_dir_3d": [
+    -0.9488011237277577,
+    0.26821993984686393,
+    -0.16683672102234828
+  ],
+  "z_mm": 67.89696867392489,
+  "perp_residual_mm": 13.718987041770648,
+  "scalp_target_dist_mm": 52.88044895438242,
+  "apex_target_dist_mm": 65.95421907343695,
+  "bowl_depth_mm": 8.73214579513946,
+  "focal_length_mm": 63.0,
+  "bowl_radius_mm": 32.0,
+  "aim_focus_at_target": true,
+  "patch_normal_used": true,
+  "target_name": "dentate_left",
+  "_provenance": "tuba.species.human.place_on_skull restrict_to_cranial_vault=True enable_air_check=True depth_penalty_weight=1.0 max_apex_to_target_mm=72.0",
+  "perp_residual_mm_skull": 13.718987041770648,
+  "bowl_tilt_off_skull_normal_deg": 17.2,
+  "focus_to_target_mm": 2.954219073436945,
+  "normal": [
+    -0.9622880354419404,
+    0.2720326025411126
+  ],
+  "tangent": [
+    -0.2720326025411126,
+    -0.9622880354419404
+  ],
+  "eeg_seed_lps": null,
+  "eeg_to_placement_mm": null
+}

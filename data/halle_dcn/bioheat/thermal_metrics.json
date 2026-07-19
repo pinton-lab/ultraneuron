@@ -1,0 +1,17 @@
+{
+  "peak_dT_final_K": 1.1516635009728318,
+  "peak_dT_history_K": 1.1516635417938232,
+  "dT_focus_K": 0.8501818716789933,
+  "dT_per_burst_K": 0.026498350869389536,
+  "cem43_peak_min": 0.0010663977308299313,
+  "dT_brain_peak_K": 0.9340812258774182,
+  "dT_skull_peak_K": 1.1516635009728318,
+  "duty_in_burst": 1.0,
+  "duty_session": 0.09999999999999999,
+  "group_period_s": 0.2,
+  "group_on_s": 0.02,
+  "n_groups": 400,
+  "t_total_s": 80.0,
+  "dt_heat_s": 1.4980625267450982,
+  "absorption_fraction_skull": 0.3
+}
