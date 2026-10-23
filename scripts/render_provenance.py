@@ -117,7 +117,7 @@ def main() -> None:
         "strain_to_tension",
         "NICEModel",
         "SolitonModel",
-        "CalciumDynamics", "KCaChannel",
+        "CalciumDynamics", "SomaticCalcium", "KCaChannel",
         "AstrocyteRelay", "NMDAReceptor",
         "MechanoNav", "MechanoSynapse",
         "cortical_pyramidal_3comp",

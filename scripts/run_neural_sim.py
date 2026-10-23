@@ -204,6 +204,9 @@ def main() -> None:
                          "reference) or 'rl' (Rush-Larsen / exponential-Euler; "
                          "~3x faster, L-stable, S2-only, ~1%% below the RK4 "
                          "reference — for fast sweeps/previews).")
+    ap.add_argument("--backend", choices=["auto", "cuda", "numba"], default="auto",
+                    help="Per-voxel kernel: 'auto' (default) uses CUDA when a GPU is "
+                         "visible (override with AMN_BACKEND), else the Numba CPU JIT.")
     ap.add_argument("--K-A", type=float, default=_DEFAULTS["K_A"])
     ap.add_argument("--alpha", type=float, dest="coupling_factor",
                     default=_DEFAULTS["coupling_factor"])
@@ -257,7 +260,9 @@ def main() -> None:
 
     scenario = args.scenario or str(getattr(cfg, "NEURAL_SCENARIO", "S2"))
     neuron = _build_neuron(cfg, scenario=scenario)
-    print(f"  scenario: {scenario}", flush=True)
+    from ultraneuron.cuda_backend import resolve_backend  # noqa: PLC0415
+    backend = resolve_backend(args.backend)
+    print(f"  scenario: {scenario}   backend: {backend}", flush=True)
     print(f"  neuron: 3-comp cortical, channels="
           f"{[c.name for c in neuron.mechano_channels]}, "
           f"piezo1 g={neuron.mechano_channels[0].g_density:.3f}", flush=True)
@@ -272,6 +277,7 @@ def main() -> None:
         duration=args.duration_ms,
         tension_threshold=args.threshold_mNm,
         integrator=args.integrator,
+        backend=backend,
     )
     elapsed = time.perf_counter() - t0
     n_fire = int(res["firing_map"].sum())
@@ -319,6 +325,7 @@ def main() -> None:
         prf_hz=np.float64(prf_hz),
         theta_hz=np.float64(theta_hz),
         integrator=str(args.integrator),
+        backend=str(backend),
         sim_git_sha=str(_git_sha()),
         sim_name=str(getattr(cfg, "SIM_NAME", "unknown")),
     )

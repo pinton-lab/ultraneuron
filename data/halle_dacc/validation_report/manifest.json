@@ -130,9 +130,9 @@
     "python": "3.10.12",
     "fullwave_path": "~/fullwave25-speckle/fullwave",
     "fullwave_git_sha": "2f8dea3",
-    "neuromod_git_sha": "dbc4dbe",
-    "amun_git_sha": "90fea5a",
-    "generated_at": "2026-06-05T14:07:24-04:00"
+    "neuromod_git_sha": "6121a84",
+    "amun_git_sha": "b141c0a",
+    "generated_at": "2026-10-06T15:37:15-04:00"
   },
   "figures": {
     "bowl_geometry": "fig_inputs_bowl_geometry.png",
@@ -156,7 +156,7 @@
       "fwhm_y_mm": 3.696,
       "fwhm_z_mm": 3.696,
       "mean_I_w_cm2": 5.294805283334341,
-      "peak_v_m_per_s": 1.649144820703441e-08,
+      "peak_v_m_per_s": 1.1856844395197186e-08,
       "arf_impulse_pa_s": 6.46046630859375,
       "peak_idx": [
         "53",
@@ -193,13 +193,20 @@
     "pressure_snapshots": "acoustic_pressure_snapshots.png"
   },
   "thermal_outputs": {
-    "peak_dT_final_K": 0.9388250941608255,
-    "peak_dT_history_K": 0.9388250708580017,
-    "dT_focus_K": 0.23349034386139506,
+    "peak_dT_final_K": 0.9241608710380188,
+    "peak_dT_history_K": 0.9363837838172913,
+    "dT_focus_K": 0.23068099177005347,
     "dT_per_burst_K": 0.02218748822528197,
-    "cem43_peak_min": 0.0008109594609047425,
-    "dT_brain_peak_K": 0.7424543574704666,
-    "dT_skull_peak_K": 0.9388250941608255,
+    "burst_resolved": true,
+    "dt_on_s": 0.002,
+    "dt_off_s": 0.02,
+    "dT_focus_end_of_last_on_K": 0.23287884107950377,
+    "dT_peak_end_of_last_on_K": 0.9363837669883385,
+    "dT_focus_within_burst_ripple_K": 0.0023917853832244873,
+    "dT_peak_within_burst_ripple_K": 0.013516604900360107,
+    "cem43_peak_min": 0.0008172199989673804,
+    "dT_brain_peak_K": 0.735116596232745,
+    "dT_skull_peak_K": 0.9241608710380188,
     "duty_in_burst": 1.0,
     "duty_session": 0.09999999999999999,
     "group_period_s": 0.2,
@@ -215,11 +222,11 @@
     "time_history": "thermal_time_history.png"
   },
   "displacement_outputs": {
-    "peak_ux_um": 0.4017020387436787,
+    "peak_ux_um": 0.355688968056711,
     "time_to_peak_ms": 19.97522448569679,
-    "u_on_end_um": 0.4015041383809148,
-    "relax_tau_ms": 32.61974648185053,
-    "field_max_um": 0.4015418824110384,
+    "u_on_end_um": 0.3554675913619576,
+    "relax_tau_ms": 32.42024559090537,
+    "field_max_um": 0.3555705063718051,
     "t_pulse_on_ms": 20.0,
     "t_period_ms": 200.0,
     "n_steps_shear": 6018,
@@ -245,24 +252,24 @@
       "units": "N/m$^3$"
     },
     "strain": {
-      "peak": 2.6094601707882248e-05,
-      "peak_brain": 2.6094601707882248e-05,
+      "peak": 2.312649303348735e-05,
+      "peak_brain": 2.312649303348735e-05,
       "peak_skull": 0.0,
-      "peak_focal_voxel": 2.6094601707882248e-05,
+      "peak_focal_voxel": 2.312649303348735e-05,
       "peak_idx": [
-        53,
+        54,
         32,
         30
       ],
       "units": "\u2014"
     },
     "tension": {
-      "peak": 6.523650646209717,
-      "peak_brain": 6.523650646209717,
+      "peak": 5.781622886657715,
+      "peak_brain": 5.781622886657715,
       "peak_skull": 0.0,
-      "peak_focal_voxel": 6.523650646209717,
+      "peak_focal_voxel": 5.781622886657715,
       "peak_idx": [
-        53,
+        54,
         32,
         30
       ],
@@ -277,13 +284,13 @@
         91.7331440607706,
         197.42567960904978
       ],
-      "eeq_field_max": 2.6094599888892844e-05,
+      "eeq_field_max": 2.3126491214497946e-05,
       "eeq_field_max_per_snapshot": [
-        2.552373734943103e-05,
-        2.5797013222472742e-05,
-        2.6094599888892844e-05,
-        3.120437952475186e-07,
-        1.3892975658791329e-08
+        2.2654718122794293e-05,
+        2.2879645257489756e-05,
+        2.3126491214497946e-05,
+        2.2317203729471657e-07,
+        9.991631522154876e-09
       ]
     },
     "tension_time": {
@@ -297,18 +304,18 @@
       ],
       "K_A": 0.25,
       "coupling_factor": 1000.0,
-      "tension_field_max_mNm": 6.523650169372559,
+      "tension_field_max_mNm": 5.781622886657715,
       "tension_field_max_per_snapshot_mNm": [
-        6.380934238433838,
-        6.449253082275391,
-        6.523650169372559,
-        0.07801094651222229,
-        0.003473243908956647
+        5.663679599761963,
+        5.719911098480225,
+        5.781622886657715,
+        0.05579300969839096,
+        0.0024979079607874155
       ],
       "n_above_threshold_per_snapshot": [
-        3053,
-        4311,
-        6182,
+        2993,
+        4447,
+        6488,
         0,
         0
       ]
@@ -324,8 +331,8 @@
       "g_trek1_mS_cm2": 0.04,
       "use_trek1": true,
       "peak_idx": [
-        45,
-        26,
+        44,
+        28,
         30
       ]
     }
@@ -348,29 +355,29 @@
     "neural_coupling_factor": 1000.0,
     "piezo1_g_density_mS_cm2": 0.1,
     "use_trek1": true,
-    "T_peak_max_mNm": 6.523650646209717,
-    "n_eligible_voxels": 87849,
-    "n_voxels_above_threshold": 5468,
-    "n_voxels_with_spike": 5468,
+    "T_peak_max_mNm": 5.781622886657715,
+    "n_eligible_voxels": 77248,
+    "n_voxels_above_threshold": 3531,
+    "n_voxels_with_spike": 3531,
     "active_fraction_burst": 1.0,
-    "peak_rate_hz": 300.0,
-    "median_latency_ms": 2.7929999828338623,
-    "p10_latency_ms": 2.0220000743865967,
-    "p90_latency_ms": 11.449398040771484,
-    "spikes_per_neuron_burst_mean": 3.7337234820775422,
-    "iso50_volume_mm3": 7025.436594176001,
-    "iso25_volume_mm3": 8523.273887744,
-    "firing_volume_at_pulse_end_mm3": 10224.936730624,
-    "firing_volume_final_mm3": 10224.936730624,
-    "firing_volume_peak_active_mm3": 1065.87672576,
+    "peak_rate_hz": 250.0,
+    "median_latency_ms": 4.468999862670898,
+    "p10_latency_ms": 3.4700000286102295,
+    "p90_latency_ms": 12.520999908447266,
+    "spikes_per_neuron_burst_mean": 3.469272160860946,
+    "iso50_volume_mm3": 4396.274003968,
+    "iso25_volume_mm3": 5432.231383040001,
+    "firing_volume_at_pulse_end_mm3": 6602.825822208,
+    "firing_volume_final_mm3": 6602.825822208,
+    "firing_volume_peak_active_mm3": 1047.17713408,
     "voxel_volume_mm3": 1.869959168,
     "T_pulse_ms": 20.0,
     "duration_ms": 20.0,
     "group_period_ms": 200.0,
     "n_groups_session": 400,
     "peak_idx": [
-      42,
-      27,
+      43,
+      28,
       31
     ]
   },
@@ -389,13 +396,13 @@
   "astrocyte_outputs": {
     "present": true,
     "figure": "astrocyte_pathway.png",
-    "focal_tension_mNm": 6.523650646209717,
-    "peak_drive": 0.03951090772355507,
+    "focal_tension_mNm": 5.781622886657715,
+    "peak_drive": 0.011614722400259472,
     "n_recruited": 0,
     "drive_threshold": 0.05,
     "tau_Ca_ms": 300.0,
     "trpa1_T_half_mNm": 6.0,
-    "focal_depolarisation_mV": 11.077824263474518,
+    "focal_depolarisation_mV": 7.491789175031123,
     "focal_n_spikes": 0,
     "duty_cycle": 0.1,
     "session_s": 80.0
@@ -403,57 +410,15 @@
   "synaptic_outputs": {
     "present": true,
     "figure": "synaptic_pathway.png",
-    "focal_tension_mNm": 6.554851055145264,
-    "peak_combined_gain": 11.646407876565954,
-    "n_recruited": 32191,
+    "focal_tension_mNm": 5.781622886657715,
+    "peak_combined_gain": 9.676136671613834,
+    "n_recruited": 17143,
     "gain_threshold": 1.5,
-    "focal_depolarisation_mV": 116.03157726035265,
-    "focal_n_spikes": 11,
+    "focal_depolarisation_mV": 116.05254979760407,
+    "focal_n_spikes": 10,
     "Pr_baseline": 0.1,
     "Pr_max": 0.6,
     "k_mechano_nav": 0.3,
     "alpha_NMDA": 1.0
-  },
-  "animations": {
-    "pressure": {
-      "available": true,
-      "prefix": "pressanim/frame",
-      "first": 0,
-      "last": 119,
-      "n_frames": 120,
-      "fps": 10,
-      "duration_s": 12.0,
-      "mp4": "wave_propagation_3d.mp4"
-    },
-    "shear": {
-      "available": true,
-      "prefix": "shearanim/frame",
-      "first": 0,
-      "last": 119,
-      "n_frames": 120,
-      "fps": 10,
-      "duration_s": 12.0,
-      "mp4": "shear_propagation_3d.mp4"
-    },
-    "temperature": {
-      "available": true,
-      "prefix": "tempanim/frame",
-      "first": 0,
-      "last": 119,
-      "n_frames": 120,
-      "fps": 10,
-      "duration_s": 12.0,
-      "mp4": "temperature_3d.mp4"
-    },
-    "neural": {
-      "available": true,
-      "prefix": "neuralanim/frame",
-      "first": 0,
-      "last": 119,
-      "n_frames": 120,
-      "fps": 10,
-      "duration_s": 12.0,
-      "mp4": "neural_firing_3d.mp4"
-    }
   }
 }

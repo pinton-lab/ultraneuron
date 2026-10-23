@@ -255,3 +255,110 @@ class TestBioheatToAbsoluteTemperature:
         result = bioheat_to_absolute_temperature(delta_T)
         assert result.shape == (3, 4, 5)
         np.testing.assert_allclose(result, 37.8)
+
+
+class TestMechanoInitSingleComp:
+    """Scenario S1 (point neuron): default init is true rest (T = 0 gates)."""
+
+    def _neuron(self):
+        p1 = copy.deepcopy(PIEZO1)
+        p1.g_density = 0.5
+        return MechanoHHNeuron.cortical_pyramidal(mechano_channels=[p1])
+
+    def test_simulate_initial_gate(self):
+        n = self._neuron()
+        r = n.simulate(dt=0.01, duration=0.05, tension_trace=6.0)
+        z = n.simulate(dt=0.01, duration=0.05, tension_trace=0.0)
+        p = n.simulate(dt=0.01, duration=0.05, tension_trace=6.0,
+                       mechano_init="peak_steady")
+        # I_mechano[0] is evaluated with the initial gate at V_rest
+        assert r["I_mechano"][0] == z["I_mechano"][0]
+        assert abs(p["I_mechano"][0]) > abs(r["I_mechano"][0])
+        with pytest.raises(ValueError, match="mechano_init"):
+            n.simulate(dt=0.01, duration=0.05, mechano_init="bogus")
+
+    @pytest.mark.parametrize("mode", ["rest", "peak_steady"])
+    def test_batch_kernels_agree_with_numpy_fallback(self, mode):
+        n = self._neuron()
+        T = np.linspace(0.0, 8.0, 12)
+        phi = np.full(T.size, n._q10_scale())
+        n_steps = 2000
+        sc = n._simulate_batch(T, phi, 0.01, n_steps, 0.0, backend="numba",
+                               mechano_init=mode)
+        ch = n.mechano_channels[0]
+        w_inf = ch.open_probability(T)[None, :]
+        tau_inv = (1.0 / ch.time_constant(T))[None, :]
+        m0, h0, n0 = n._steady_state_gates(n.V_rest)
+        w_init = (np.full((1, T.size), float(ch.open_probability(0.0)))
+                  if mode == "rest" else None)
+        ref = n._simulate_batch_numpy(
+            T, phi, 0.01, n_steps, 0.0, w_inf, tau_inv,
+            np.array([ch.g_density]), np.array([ch.E_rev]), m0, h0, n0,
+            w_init=w_init)
+        assert np.array_equal(sc, ref)
+        # Time-varying path: Numba kernel and NumPy fallback share the init
+        T2 = np.broadcast_to(T, (n_steps, T.size)).copy()
+        sc_tv = n._simulate_batch(T, phi, 0.01, n_steps, 0.0, tensions_2d=T2,
+                                  backend="numba", mechano_init=mode)
+        ref_tv = n._simulate_batch_numpy_tv(
+            T2, phi, 0.01, n_steps, 0.0, np.array([ch.g_density]),
+            np.array([ch.E_rev]), np.array([ch.T_half]), np.array([ch.delta_A]),
+            np.array([ch.tau_0]), ch._kT, m0, h0, n0, init_rest=(mode == "rest"),
+            tau_act_inv=np.array([1.0 / ch.tau_act]))
+        assert np.array_equal(sc_tv, ref_tv)
+
+    @pytest.mark.parametrize("mode", ["rest", "peak_steady"])
+    def test_time_varying_kernel_honours_fixed_tau_act(self, mode):
+        """A constant tension fed through the time-varying kernel must give
+        the constant-tension result: both honour the channel's fixed
+        ``tau_act`` (Piezo1: 2 ms) instead of the bell-shaped tau_0 form."""
+        n = self._neuron()
+        ch = n.mechano_channels[0]
+        assert ch.tau_act is not None
+        T = np.linspace(1.0, 8.0, 16)
+        phi = np.full(T.size, n._q10_scale())
+        n_steps = 2000
+        T2 = np.broadcast_to(T, (n_steps, T.size)).copy()
+        sc = n._simulate_batch(T, phi, 0.01, n_steps, 0.0, backend="numba",
+                               mechano_init=mode)
+        sc_tv = n._simulate_batch(T, phi, 0.01, n_steps, 0.0, tensions_2d=T2,
+                                  backend="numba", mechano_init=mode)
+        assert sc.sum() > 0
+        assert np.allclose(sc, sc_tv, atol=1)
+        # NumPy fallback, and the bell-shaped form differs (so the test bites)
+        m0, h0, n0 = n._steady_state_gates(n.V_rest)
+        args = (T2, phi, 0.01, n_steps, 0.0, np.array([ch.g_density]),
+                np.array([ch.E_rev]), np.array([ch.T_half]),
+                np.array([ch.delta_A]), np.array([ch.tau_0]), ch._kT,
+                m0, h0, n0)
+        fixed = n._simulate_batch_numpy_tv(
+            *args, init_rest=(mode == "rest"),
+            tau_act_inv=np.array([1.0 / ch.tau_act]))
+        bell = n._simulate_batch_numpy_tv(*args, init_rest=(mode == "rest"))
+        assert np.allclose(fixed, sc, atol=1)
+        if mode == "rest":
+            assert not np.array_equal(fixed, bell)
+
+    def test_rest_default_differs_from_peak_steady(self):
+        n = self._neuron()
+        T = np.linspace(2.0, 8.0, 16)
+        phi = np.full(T.size, n._q10_scale())
+        r = n._simulate_batch(T, phi, 0.01, 1000, 0.0, backend="numba")
+        p = n._simulate_batch(T, phi, 0.01, 1000, 0.0, backend="numba",
+                              mechano_init="peak_steady")
+        assert p.sum() > 0
+        assert not np.array_equal(r, p)
+        assert np.all(r <= p + 1)
+
+    def test_simulate_map_threads_option(self):
+        n = self._neuron()
+        # tension = K_A·alpha·strain = 250 N/m · strain → 0..8 mN/m
+        strain = (np.linspace(0.0, 8.0, 8) / 250e3).reshape(2, 2, 2)
+        kw = dict(K_A=0.25, coupling_factor=1000.0, dt=0.01, duration=10.0,
+                  tension_threshold=0.0, backend="numba")
+        d = simulate_map(strain, n, **kw)
+        r = simulate_map(strain, n, mechano_init="rest", **kw)
+        p = simulate_map(strain, n, mechano_init="peak_steady", **kw)
+        assert np.array_equal(d["spike_count_map"], r["spike_count_map"])
+        assert p["spike_count_map"].sum() > 0
+        assert not np.array_equal(r["spike_count_map"], p["spike_count_map"])

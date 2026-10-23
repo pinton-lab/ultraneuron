@@ -1,0 +1,36 @@
+{
+ "scale_factor": 1.0868140250632898,
+ "source_p0_canonical_MPa": 0.1,
+ "source_p0_rerun_MPa": 0.10868140250632899,
+ "peak_p_brain_rescaled_MPa": 0.5,
+ "peak_p_brain_rerun_MPa": 0.49915632605552673,
+ "peak_ratio_rerun_over_rescaled": 0.9983126521110535,
+ "focal_voxel_rescaled": [
+  53,
+  32,
+  32
+ ],
+ "focal_voxel_rerun": [
+  53,
+  32,
+  32
+ ],
+ "rel_L2_diff_brain": 0.0004181480617262423,
+ "rel_L2_diff_focal_m6dB": 0.0010933183366432786,
+ "max_abs_rel_diff_focal_m6dB": 0.002042187610641122,
+ "median_ratio_focal_m6dB": 0.9992313981056213,
+ "n_focal_voxels_m6dB": 269,
+ "harmonics_rerun_focal": {
+  "f_nyquist_MHz": 1.7827529021558866,
+  "second_over_first": 0.16137939732586246,
+  "third_over_first": 0.010162873762534315
+ },
+ "harmonics_rescaled_focal": {
+  "f_nyquist_MHz": 1.7827529021558866,
+  "second_over_first": 0.16034071419889395,
+  "third_over_first": 0.00969797478635642
+ },
+ "shock_distance_m_at_focal_p": 0.42346057295799255,
+ "focal_axial_fwhm_mm": 22.176000000000002,
+ "sigma_goldberg_like_over_fwhm": 0.05236851051449776
+}

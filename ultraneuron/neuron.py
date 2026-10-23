@@ -49,6 +49,38 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Numba-accelerated batch kernel (optional, ~50-100x faster for large N)
 # ---------------------------------------------------------------------------
+#: Initial condition of the mechanosensitive gates (activation ``w`` and,
+#: where modelled, inactivation ``h_mech``) at the start of a simulated ON
+#: window.
+#:
+#: * ``"rest"`` (default) — steady state for ZERO tension (true rest): the
+#:   ON window starts with the channels closed and they open with their
+#:   own kinetics. Every burst of the theta-burst protocol starts from
+#:   rest because the tissue tension relaxes during the 180 ms OFF time
+#:   (visco-elastic tau ~32 ms): chaining 200 ms periods with the full
+#:   state carried over (``scripts/run_burst_periodicity.py``,
+#:   ``data/halle_dacc/calcium/burst_periodicity.json``) gives bursts that
+#:   start with the mechano gates closed (w at w_inf(0) to machine
+#:   precision) and reproduce the rest-start ON window.
+#: * ``"peak_steady"`` — legacy: steady state for the window's (step-0)
+#:   peak tension, i.e. the channels already fully open at t = 0. This is
+#:   the initial condition of the original canonical runs (halle_dacc S2:
+#:   13381 spikes / 3590 firing voxels vs 12250 / 3531 from rest).
+#:
+#: V, the HH gates (steady state at V_rest) and [Ca] (Ca_rest) are the
+#: same in both modes.
+MECHANO_INIT_MODES = ("rest", "peak_steady")
+
+
+def _check_mechano_init(mechano_init: str) -> bool:
+    """Validate ``mechano_init``; return True for ``"rest"``."""
+    if mechano_init not in MECHANO_INIT_MODES:
+        msg = (f"mechano_init must be one of {MECHANO_INIT_MODES}, "
+               f"got {mechano_init!r}")
+        raise ValueError(msg)
+    return mechano_init == "rest"
+
+
 try:
     from numba import njit, prange
 
@@ -76,8 +108,16 @@ try:
         m0: float,
         h0: float,
         n0: float,
+        init_rest: int,
+        ch_w_rest: np.ndarray,
     ) -> np.ndarray:
-        """Numba-compiled parallel RK4 across N voxels."""
+        """Numba-compiled parallel RK4 across N voxels.
+
+        ``init_rest != 0`` starts the mechano gates at the zero-tension
+        steady state ``ch_w_rest`` (true rest, the default); 0 starts them
+        at the steady state for the voxel's tension (legacy
+        ``'peak_steady'``).
+        """
         N = tensions.shape[0]
         n_ch = ch_g_dens.shape[0]
         spike_counts = np.zeros(N, dtype=np.int32)
@@ -89,14 +129,18 @@ try:
             n = n0
             phi = phi_arr[idx]
 
-            # Initialise mechano gates at steady state
+            # Initialise mechano gates at rest (zero tension) or at the
+            # steady state for the voxel's tension
             w = np.empty(n_ch)
             w_inf_i = np.empty(n_ch)
             tau_inv_i = np.empty(n_ch)
             for k in range(n_ch):
                 w_inf_i[k] = ch_w_inf[k, idx]
                 tau_inv_i[k] = ch_tau_inv[k, idx]
-                w[k] = w_inf_i[k]
+                if init_rest != 0:
+                    w[k] = ch_w_rest[k]
+                else:
+                    w[k] = w_inf_i[k]
 
             V_prev = V
 
@@ -326,12 +370,21 @@ try:
         ch_T_halfs: np.ndarray,
         ch_delta_As: np.ndarray,
         ch_tau_0s: np.ndarray,
+        ch_tau_act_inv: np.ndarray,
         ch_kT: float,
         m0: float,
         h0: float,
         n0: float,
+        init_rest: int,
     ) -> np.ndarray:
-        """Numba-compiled parallel RK4 with time-varying tension (n_steps, N)."""
+        """Numba-compiled parallel RK4 with time-varying tension (n_steps, N).
+
+        ``init_rest != 0`` starts the mechano gates at the zero-tension
+        steady state; 0 at the steady state for ``tensions_2d[0]``.
+        ``ch_tau_act_inv[k] > 0`` uses the channel's fixed activation time
+        constant ``tau_act`` (as :meth:`MechanosensitiveChannel.time_constant`
+        does); 0 falls back to the bell-shaped ``tau_0`` formula.
+        """
         N = tensions_2d.shape[1]
         n_ch = ch_g_dens.shape[0]
         spike_counts = np.zeros(N, dtype=np.int32)
@@ -344,9 +397,12 @@ try:
             phi = phi_arr[idx]
 
             w = np.empty(n_ch)
-            # Initialise gates at steady state for initial tension
+            # Initialise gates at steady state for the initial tension, or
+            # for zero tension (true rest) when init_rest != 0
             for k in range(n_ch):
                 T0 = tensions_2d[0, idx]
+                if init_rest != 0:
+                    T0 = 0.0
                 exponent = -ch_delta_As[k] * (T0 - ch_T_halfs[k]) / ch_kT
                 if exponent >= 0.0:
                     e = np.exp(-exponent)
@@ -371,8 +427,11 @@ try:
                     else:
                         po = 1.0 / (1.0 + np.exp(exponent))
                     w_inf_now[k] = po
-                    denom = 4.0 * po * (1.0 - po) + 0.01
-                    tau_inv_now[k] = denom / ch_tau_0s[k]
+                    if ch_tau_act_inv[k] > 0.0:
+                        tau_inv_now[k] = ch_tau_act_inv[k]
+                    else:
+                        denom = 4.0 * po * (1.0 - po) + 0.01
+                        tau_inv_now[k] = denom / ch_tau_0s[k]
 
                 # --- k1 ---
                 k1V, k1m, k1h, k1n = _derivs_scalar(
@@ -890,6 +949,7 @@ class MechanoHHNeuron:
         tension_trace: NDArray[np.floating] | float = 0.0,
         temperature_trace: NDArray[np.floating] | float | None = None,
         extra_current_fn: Callable[[float, int], float] | None = None,
+        mechano_init: str = "rest",
     ) -> dict[str, NDArray[np.floating]]:
         """Run a point-neuron simulation.
 
@@ -917,6 +977,12 @@ class MechanoHHNeuron:
             evaluated each RK4 sub-step. Used to inject voltage-dependent
             synaptic currents in the synaptic-relay pathway. Default
             ``None`` (no extra current — identical to the base model).
+        mechano_init : {"rest", "peak_steady"}
+            Initial mechano gates: ``"rest"`` (default) = steady state for
+            zero tension (true rest — every theta burst starts from rest
+            because the tension relaxes during the OFF time); ``"peak_steady"``
+            = steady state for ``tension_trace[0]`` (legacy). See
+            :data:`MECHANO_INIT_MODES`.
 
         Returns
         -------
@@ -961,10 +1027,12 @@ class MechanoHHNeuron:
         m0, h0, n0 = self._steady_state_gates(V)
         m, h, n = m0, h0, n0
 
-        # Mechano gate initialisation (steady state at initial tension)
+        # Mechano gate initialisation: steady state at zero tension (rest)
+        # or at the initial tension (legacy 'peak_steady')
+        T_init = 0.0 if _check_mechano_init(mechano_init) else tension_arr[0]
         mechano_gates = []
         for ch in self.mechano_channels:
-            w_init = float(ch.open_probability(tension_arr[0]))
+            w_init = float(ch.open_probability(T_init))
             mechano_gates.append(w_init)
 
         # Storage
@@ -1033,7 +1101,8 @@ class MechanoHHNeuron:
         n_steps: int,
         I_stim: float,
         tensions_2d: NDArray[np.floating] | None = None,
-        backend: str = "numba",
+        backend: str = "auto",
+        mechano_init: str = "rest",
     ) -> NDArray[np.integer]:
         """Vectorized RK4 integration over N voxels.
 
@@ -1061,6 +1130,10 @@ class MechanoHHNeuron:
             When provided, each voxel sees a different tension at each
             time step. Overrides ``tensions`` for integration (though
             ``tensions`` is still used if ``tensions_2d`` is None).
+        mechano_init : {"rest", "peak_steady"}
+            Initial mechano gates (see :data:`MECHANO_INIT_MODES`):
+            zero-tension steady state (default) or steady state for the
+            voxel's (step-0) tension.
 
         Returns
         -------
@@ -1071,9 +1144,16 @@ class MechanoHHNeuron:
         n_ch = len(self.mechano_channels)
         m0, h0, n0 = self._steady_state_gates(self.V_rest)
         N = len(tensions)
+        init_rest = int(_check_mechano_init(mechano_init))
+        # Zero-tension steady state of each channel (used when init_rest)
+        ch_w_rest = np.array(
+            [float(ch.open_probability(0.0)) for ch in self.mechano_channels],
+            dtype=np.float64,
+        )
 
         # CUDA backend selection — fall back to Numba if unavailable.
         from . import cuda_backend as _cuda  # noqa: PLC0415
+        backend = _cuda.resolve_backend(backend)
         _use_cuda = False
         if backend == "cuda":
             if not _cuda.is_cuda_available():
@@ -1096,6 +1176,11 @@ class MechanoHHNeuron:
             ch_T_halfs = np.array([ch.T_half for ch in self.mechano_channels], dtype=np.float64)
             ch_delta_As = np.array([ch.delta_A for ch in self.mechano_channels], dtype=np.float64)
             ch_tau_0s = np.array([ch.tau_0 for ch in self.mechano_channels], dtype=np.float64)
+            # Fixed activation tau (Phase-5 tau_act) when set, else 0 → the
+            # bell-shaped tau_0 formula; mirrors ch.time_constant().
+            ch_tau_act_inv = np.array(
+                [1.0 / float(ch.tau_act) if ch.tau_act is not None else 0.0
+                 for ch in self.mechano_channels], dtype=np.float64)
             kT = self.mechano_channels[0]._kT if n_ch > 0 else 4.114
 
             if _use_cuda:
@@ -1108,6 +1193,8 @@ class MechanoHHNeuron:
                     ch_g_dens, ch_E_revs,
                     ch_T_halfs, ch_delta_As, ch_tau_0s, kT,
                     m0, h0, n0,
+                    init_rest=init_rest,
+                    ch_tau_act_inv=ch_tau_act_inv,
                 )
 
             if _HAS_NUMBA:
@@ -1132,10 +1219,12 @@ class MechanoHHNeuron:
                     ch_T_halfs,
                     ch_delta_As,
                     ch_tau_0s,
+                    ch_tau_act_inv,
                     kT,
                     m0,
                     h0,
                     n0,
+                    init_rest,
                 )
 
             return self._simulate_batch_numpy_tv(
@@ -1153,6 +1242,8 @@ class MechanoHHNeuron:
                 m0,
                 h0,
                 n0,
+                init_rest=bool(init_rest),
+                tau_act_inv=ch_tau_act_inv,
             )
 
         # Constant-tension path: precompute channel steady-state
@@ -1172,6 +1263,7 @@ class MechanoHHNeuron:
                 ch_E_revs if n_ch > 0 else np.empty(0),
                 ch_w_inf[:n_ch], ch_tau_inv[:n_ch],
                 m0, h0, n0,
+                init_rest=init_rest, ch_w_rest=ch_w_rest,
             )
 
         if _HAS_NUMBA:
@@ -1198,6 +1290,8 @@ class MechanoHHNeuron:
                 m0,
                 h0,
                 n0,
+                init_rest,
+                ch_w_rest,
             )
 
         return self._simulate_batch_numpy(
@@ -1213,6 +1307,8 @@ class MechanoHHNeuron:
             m0,
             h0,
             n0,
+            w_init=(np.broadcast_to(ch_w_rest[:, None], (n_ch, N)).copy()
+                    if init_rest else None),
         )
 
     def _simulate_batch_numpy(
@@ -1229,8 +1325,13 @@ class MechanoHHNeuron:
         m0: float,
         h0: float,
         n0: float,
+        w_init: NDArray[np.floating] | None = None,
     ) -> NDArray[np.integer]:
-        """Numpy fallback for ``_simulate_batch`` (no numba)."""
+        """Numpy fallback for ``_simulate_batch`` (no numba).
+
+        ``w_init`` (n_ch, N): initial mechano gates; ``None`` = ``w_inf``
+        (legacy 'peak_steady').
+        """
         N = len(tensions)
         n_ch = len(g_dens)
 
@@ -1238,7 +1339,7 @@ class MechanoHHNeuron:
         m = np.full(N, m0)
         h = np.full(N, h0)
         n = np.full(N, n0)
-        w = w_inf.copy()
+        w = w_inf.copy() if w_init is None else np.array(w_init, dtype=np.float64)
 
         spike_counts = np.zeros(N, dtype=np.int32)
         V_prev = np.empty(N)
@@ -1343,8 +1444,16 @@ class MechanoHHNeuron:
         m0: float,
         h0: float,
         n0: float,
+        init_rest: bool = False,
+        tau_act_inv: NDArray[np.floating] | None = None,
     ) -> NDArray[np.integer]:
-        """Numpy fallback for time-varying tension batch (no numba)."""
+        """Numpy fallback for time-varying tension batch (no numba).
+
+        ``init_rest`` starts the mechano gates at the zero-tension steady
+        state instead of the steady state for ``tensions_2d[0]``.
+        ``tau_act_inv[k] > 0`` uses channel k's fixed activation time
+        constant; 0 (or ``tau_act_inv=None``) the bell-shaped ``tau_0`` form.
+        """
         from .channels import _safe_sigmoid
 
         N = tensions_2d.shape[1]
@@ -1355,10 +1464,12 @@ class MechanoHHNeuron:
         h = np.full(N, h0)
         n = np.full(N, n0)
 
-        # Init mechano gates at steady state for t=0 tension
+        # Init mechano gates at steady state for the t=0 tension (or zero
+        # tension when init_rest)
+        T0 = np.zeros(N) if init_rest else tensions_2d[0]
         w = np.empty((n_ch, N))
         for k in range(n_ch):
-            exponent = -delta_As[k] * (tensions_2d[0] - T_halfs[k]) / kT
+            exponent = -delta_As[k] * (T0 - T_halfs[k]) / kT
             w[k] = _safe_sigmoid(exponent)
 
         spike_counts = np.zeros(N, dtype=np.int32)
@@ -1375,8 +1486,11 @@ class MechanoHHNeuron:
                 exponent = -delta_As[k] * (T_now - T_halfs[k]) / kT
                 po = _safe_sigmoid(exponent)
                 w_inf[k] = po
-                denom = 4.0 * po * (1.0 - po) + 0.01
-                tau_inv[k] = denom / tau_0s[k]
+                if tau_act_inv is not None and tau_act_inv[k] > 0.0:
+                    tau_inv[k] = tau_act_inv[k]
+                else:
+                    denom = 4.0 * po * (1.0 - po) + 0.01
+                    tau_inv[k] = denom / tau_0s[k]
 
             def _derivs_tv(
                 V_: NDArray,
@@ -1461,7 +1575,8 @@ def simulate_map(
     I_stim: float = 0.0,
     tension_threshold: float | None = None,
     temperature_3d: NDArray[np.floating] | None = None,
-    backend: str = "numba",
+    backend: str = "auto",
+    mechano_init: str = "rest",
 ) -> dict[str, NDArray]:
     """Run neuron simulations across a 3-D strain field.
 
@@ -1491,6 +1606,11 @@ def simulate_map(
     temperature_3d : ndarray (nx, ny, nz) or None
         Absolute temperature at each voxel [°C]. When ``None``,
         ``neuron.temperature`` is used everywhere (isothermal).
+    mechano_init : {"rest", "peak_steady"}
+        Initial mechano gates (see :data:`MECHANO_INIT_MODES`). Default
+        ``"rest"``: the window starts from true rest (zero-tension steady
+        state), as every theta burst does after the tension relaxes in
+        the OFF time; ``"peak_steady"`` reproduces the legacy runs.
 
     Returns
     -------
@@ -1522,6 +1642,7 @@ def simulate_map(
             I_stim=I_stim,
             T_min=0.0,
             T_max=float(np.max(tension_3d)) * 1.1,
+            mechano_init=mechano_init,
         )
 
     firing_map = np.zeros((nx, ny, nz), dtype=bool)
@@ -1541,6 +1662,7 @@ def simulate_map(
 
         spike_counts = neuron._simulate_batch(
             tensions, phi_arr, dt, n_steps, I_stim, backend=backend,
+            mechano_init=mechano_init,
         )
 
         spike_count_map[mask] = spike_counts
@@ -1562,6 +1684,7 @@ def _find_threshold_tension(
     T_max: float,
     tol: float = 0.01,
     max_iter: int = 30,
+    mechano_init: str = "rest",
 ) -> float:
     """Find minimum constant tension that produces a spike.
 
@@ -1579,7 +1702,8 @@ def _find_threshold_tension(
     for _ in range(max_iter):
         tensions = np.linspace(T_min, T_max, n_probe)
         phi_arr = np.full(n_probe, neuron._q10_scale())
-        spike_counts = neuron._simulate_batch(tensions, phi_arr, dt, n_steps, I_stim)
+        spike_counts = neuron._simulate_batch(tensions, phi_arr, dt, n_steps, I_stim,
+                                              mechano_init=mechano_init)
 
         fires = spike_counts > 0
         if not np.any(fires):

@@ -16,7 +16,7 @@ As a falsifiable cross-check it also includes the Heimburg–Jackson electromech
 
 Every numerical parameter is classified by source (literature-anchored, calibrated, assumed, or derived) and the framework ships with a ±25 % sensitivity sweep that identifies the dominant uncertainties.
 
-The accompanying manuscript (under review at *Journal of Neural Engineering*) is hosted on arXiv (link TBD).  The figure-regeneration scripts (`scripts/`), validation-report pipeline (`validation_report/`), and parameter source-classification tables that produce the manuscript's figures and tables are tracked in this repository.
+The accompanying manuscript (under review at *Journal of Neural Engineering*) is hosted on arXiv (link TBD).  This repository contains the code, the run configurations and the result summaries. The scripts in `scripts/` regenerate the manuscript's figures and tables locally (into `figures/` and `data/*.tex`), but those outputs and the manuscript itself are kept separate from the code and are not tracked here.
 
 ## Install
 
@@ -91,7 +91,7 @@ The canonical demonstration is a theta-burst sonication through the Halle micro-
 | 10. Manuscript figure composites | `scripts/build_fig{3,4,5,6,7}.py` | The composite PDFs/PNGs in `figures/` |
 
 The original F3 → left-caudate target is still reproducible from `validation_report/configs/halle_caudate.py` (set `HALLE_SIM_NAME=halle_caudate` for stages 7 and 9, or omit the env var since `halle_caudate` is the default for backwards compatibility).
-The rendered manuscript and supplementary PDFs are hosted on arXiv (link TBD); their LaTeX sources are not tracked in this repository.
+The manuscript, its LaTeX sources and its rendered figures and tables are not tracked in this repository.
 
 ### Data
 

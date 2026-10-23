@@ -1,0 +1,77 @@
+{
+ "factor_1": {
+  "factor": 1.0,
+  "dx_mm": 1.232,
+  "grid": [
+   106,
+   65,
+   65
+  ],
+  "n_voxels": 447850,
+  "voxel_mm3": 1.8699591679999998,
+  "shear_dt_us": 33.236646398829926,
+  "shear_steps": 602,
+  "shear_elapsed_s": 3.797070642001927,
+  "vel_damp": 0.020000000000000018,
+  "mean_spikes_per_firing_voxel": 3.468723464477781,
+  "peak_ux_um": 0.35568901896476746,
+  "peak_eps": 2.312702599738259e-05,
+  "peak_tension_mNm": 5.78175687789917,
+  "n_firing_voxels": 3533,
+  "total_spikes": 12255,
+  "firing_volume_mm3": 6606.565740544,
+  "iso25_volume_mm3": 5434.101342208,
+  "iso50_volume_mm3": 4398.143963136,
+  "neural_elapsed_s": 26.406225700862706
+ },
+ "factor_0.5": {
+  "factor": 0.5,
+  "dx_mm": 2.464,
+  "grid": [
+   53,
+   33,
+   33
+  ],
+  "n_voxels": 57717,
+  "voxel_mm3": 14.959673343999999,
+  "shear_dt_us": 66.47329279765985,
+  "shear_steps": 301,
+  "shear_elapsed_s": 0.7301823738962412,
+  "vel_damp": 0.03960000000000008,
+  "mean_spikes_per_firing_voxel": 3.2972972972972974,
+  "peak_ux_um": 0.382345050573349,
+  "peak_eps": 2.0836772819166072e-05,
+  "peak_tension_mNm": 5.209193229675293,
+  "n_firing_voxels": 444,
+  "total_spikes": 1464,
+  "firing_volume_mm3": 6642.094964735999,
+  "iso25_volume_mm3": 5265.805017088,
+  "iso50_volume_mm3": 4069.031149568,
+  "neural_elapsed_s": 2.878529906272888
+ },
+ "factor_2": {
+  "factor": 2.0,
+  "dx_mm": 0.616,
+  "grid": [
+   211,
+   129,
+   129
+  ],
+  "n_voxels": 3511251,
+  "voxel_mm3": 0.23374489599999998,
+  "shear_dt_us": 16.618323199414963,
+  "shear_steps": 1204,
+  "shear_elapsed_s": 26.691863786894828,
+  "vel_damp": 0.01005050633883342,
+  "mean_spikes_per_firing_voxel": 3.4466040078028017,
+  "peak_ux_um": 0.34715595841407776,
+  "peak_eps": 2.271876837767195e-05,
+  "peak_tension_mNm": 5.679692268371582,
+  "n_firing_voxels": 28195,
+  "total_spikes": 97177,
+  "firing_volume_mm3": 6590.43734272,
+  "iso25_volume_mm3": 5334.526016512,
+  "iso50_volume_mm3": 4367.055891968,
+  "neural_elapsed_s": 150.20999832591042
+ }
+}

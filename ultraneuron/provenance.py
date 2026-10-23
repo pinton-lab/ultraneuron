@@ -123,9 +123,9 @@ TRAAK_PROVENANCE: dict[str, Provenance] = {
         notes="Estimated from neural expression levels; user-tunable",
     ),
     "E_rev": Provenance(
-        ParamSource.LITERATURE,
+        ParamSource.DERIVED,
         reference="K⁺ Nernst at physiological [K]",
-        notes="-90 mV typical",
+        notes="Nernst potential of K+ at physiological concentrations ([K]o 3 mM, [K]i 140 mM, 37 C), -90 to -100 mV; not a fitted parameter",
     ),
     "tau_0": Provenance(
         ParamSource.ASSUMPTION,
@@ -160,7 +160,7 @@ TREK1_PROVENANCE: dict[str, Provenance] = {
     "g_density": Provenance(
         ParamSource.ASSUMPTION, notes="Cortical pyramidal neuron expression range"
     ),
-    "E_rev": Provenance(ParamSource.LITERATURE, reference="K⁺ Nernst"),
+    "E_rev": Provenance(ParamSource.DERIVED, reference="K⁺ Nernst", notes="Nernst potential of K+ at physiological concentrations ([K]o 3 mM, [K]i 140 mM, 37 C), -90 to -100 mV; not a fitted parameter"),
     "tau_0": Provenance(
         ParamSource.ASSUMPTION,
         notes="Legacy bell-shape baseline; superseded by tau_act on the library preset",
@@ -193,7 +193,7 @@ TREK2_PROVENANCE: dict[str, Provenance] = {
         ParamSource.ASSUMPTION,
         notes="Cortical pyramidal neuron expression range",
     ),
-    "E_rev": Provenance(ParamSource.LITERATURE, reference="K⁺ Nernst"),
+    "E_rev": Provenance(ParamSource.DERIVED, reference="K⁺ Nernst", notes="Nernst potential of K+ at physiological concentrations ([K]o 3 mM, [K]i 140 mM, 37 C), -90 to -100 mV; not a fitted parameter"),
     "tau_0": Provenance(
         ParamSource.ASSUMPTION,
         notes="Legacy bell-shape baseline; superseded by tau_act on the library preset",
@@ -225,25 +225,34 @@ TREK2_PROVENANCE: dict[str, Provenance] = {
 
 STRAIN_TO_TENSION_PROVENANCE: dict[str, Provenance] = {
     "K_A": Provenance(
-        ParamSource.ASSUMPTION,
-        reference="Lipid-bilayer area-expansion modulus, range 0.1-0.5 N/m",
+        ParamSource.LITERATURE,
+        reference=(
+            "Rawicz et al. 2000 Biophys J 79:328 (micropipette aspiration, "
+            "K_A = 0.23-0.27 N/m for PC bilayers; 0.1-0.5 N/m across lipid "
+            "compositions); Sukharev & Sachs 2012"
+        ),
         notes=(
-            "Default 0.25 N/m is the centre of the published range "
-            "(Rawicz 2000, Sukharev 2012); the actual coupling from "
-            "tissue-scale strain to per-channel membrane tension subsumes "
-            "geometric concentration, cytoskeletal mechanics, and membrane "
-            "curvature effects. User must calibrate for the specific "
-            "tissue/cell-type/exposure under study."
+            "Default 0.25 N/m is the centre of the measured range for lipid "
+            "bilayers. Enters the model only through the product K_A*alpha, "
+            "which is the single experimentally identifiable quantity and "
+            "inherits the ASSUMPTION status of alpha."
         ),
     ),
     "coupling_factor": Provenance(
         ParamSource.ASSUMPTION,
         notes=(
-            "Dimensionless multi-scale amplification α relating far-field "
-            "tissue strain to local membrane area change. Code default 1.0; "
-            "manuscript-canonical α=1000 (cortical-pyramidal-calibrated, "
-            "5× the iso-potential/hippocampal literature α≈200). Calibrate "
-            "per tissue/cell-type/exposure."
+            "Dimensionless multi-scale amplification α relating voxel-scale "
+            "tissue strain to bilayer areal strain. Purely mechanical: it "
+            "contains no channel-expression content (expression is carried "
+            "by the per-compartment conductance densities and the "
+            "dendrite:soma Piezo1 density ratio). Bracket [200, 2000]: lower "
+            "end from planar-bilayer / continuum estimates (Rawicz 2000, "
+            "Sukharev 2012, Salahshoor 2020), upper end from cytoskeletal "
+            "and viscoelastic stress concentration; not calibrated on neurons "
+            "in tissue under ultrasound. Code default 1.0; manuscript working "
+            "point α=1000 (K_A*alpha = 250 N/m per unit strain), chosen so "
+            "that the focal tension exceeds both the Piezo1 activation and "
+            "inactivation half-tensions. Only the product K_A*alpha is identifiable."
         ),
     ),
 }
@@ -255,9 +264,9 @@ STRAIN_TO_TENSION_PROVENANCE: dict[str, Provenance] = {
 
 NICE_PROVENANCE: dict[str, Provenance] = {
     "f_carrier": Provenance(
-        ParamSource.LITERATURE,
+        ParamSource.DERIVED,
         reference="Typical TUS carrier (Legon, Tyler)",
-        notes="500 kHz default; user supplies their protocol value",
+        notes="Protocol input: the carrier frequency of the simulated exposure (500 kHz here), not a model parameter",
     ),
     "f_resonant": Provenance(
         ParamSource.LITERATURE,
@@ -278,7 +287,7 @@ NICE_PROVENANCE: dict[str, Provenance] = {
     ),
     "C_m0": Provenance(
         ParamSource.LITERATURE,
-        reference="Standard neuronal specific capacitance, 1 μF/cm²",
+        reference="Gentet, Stuart & Clements 2000 Biophys J 79:314 (0.9 uF/cm^2); Hille 2001, Ion Channels of Excitable Membranes, 3rd ed.",
     ),
     "lj_strength": Provenance(
         ParamSource.CALIBRATED,
@@ -334,14 +343,14 @@ SOLITON_PROVENANCE: dict[str, Provenance] = {
         ),
     ),
     "rho": Provenance(
-        ParamSource.LITERATURE,
+        ParamSource.DERIVED,
         reference="Soft-tissue/water density; matches repo FDTD RHO0 = 1000 kg/m³",
-        notes="Used in the bulk-modulus strain ε = P/(ρc²).",
+        notes="Taken from the acoustic medium of the run (rho0 = 1000 kg/m^3)",
     ),
     "c": Provenance(
-        ParamSource.LITERATURE,
+        ParamSource.DERIVED,
         reference="Soft-tissue speed of sound; matches repo FDTD C0 = 1540 m/s",
-        notes="ρc² is the adiabatic bulk modulus for the strain conversion.",
+        notes="Taken from the acoustic medium of the run (c0 = 1540 m/s)",
     ),
     "peak_shape": Provenance(
         ParamSource.ASSUMPTION,
@@ -357,7 +366,7 @@ SOLITON_PROVENANCE: dict[str, Provenance] = {
 CALCIUM_DYNAMICS_PROVENANCE: dict[str, Provenance] = {
     "Ca_rest": Provenance(
         ParamSource.LITERATURE,
-        reference="Cortical pyramidal resting [Ca²⁺]_i, ~50 nM",
+        reference="Maravall et al. 2000 Biophys J 78:2655 (resting [Ca2+]i 30-60 nM, neocortical pyramidal cells)",
     ),
     "tau_decay": Provenance(
         ParamSource.LITERATURE,
@@ -375,6 +384,33 @@ CALCIUM_DYNAMICS_PROVENANCE: dict[str, Provenance] = {
     ),
 }
 
+SOMATIC_CALCIUM_PROVENANCE: dict[str, Provenance] = {
+    # Ca_rest is not listed: SomaticCalcium inherits CalciumDynamics.Ca_rest
+    # (see CALCIUM_DYNAMICS_PROVENANCE["Ca_rest"]).
+    "tau_ms": Provenance(
+        ParamSource.ASSUMPTION,
+        notes=(
+            "Decay time constant of the slow somatic (bulk) Ca2+ read-out pool, 700 ms, "
+            "chosen within the 0.5-1 s range of a somatic bulk pool; not fitted. "
+            "Read-out only, with no feedback on the membrane"
+        ),
+    ),
+    "dCa_per_spike": Provenance(
+        ParamSource.ASSUMPTION,
+        notes=(
+            "Free somatic [Ca2+] increment per action potential, 0.08 μM; assumed in the "
+            "range quoted for cortical somatic single-spike transients, not fitted"
+        ),
+    ),
+    "Ca_max": Provenance(
+        ParamSource.ASSUMPTION,
+        notes=(
+            "Saturation clamp of the somatic pool, 10 μM (None = unbounded); assumed, not "
+            "fitted; inactive for the canonical session (peak below 2 μM)"
+        ),
+    ),
+}
+
 KCA_CHANNEL_PROVENANCE: dict[str, Provenance] = {
     "Ca_half": Provenance(
         ParamSource.LITERATURE, reference="Köhler et al. 1996 (SK channel)"
@@ -383,12 +419,13 @@ KCA_CHANNEL_PROVENANCE: dict[str, Provenance] = {
         ParamSource.LITERATURE, reference="Hirschberg et al. 1998"
     ),
     "g_density": Provenance(
-        ParamSource.ASSUMPTION,
-        notes="Cortical pyramidal SK density range, 0.1–1.0 mS/cm² (Sah 1996)",
+        ParamSource.LITERATURE,
+        reference="Sah 1996 Trends Neurosci 19:150 (cortical pyramidal SK density 0.1-1.0 mS/cm^2)",
+        notes="Default 0.3 mS/cm^2 chosen within the cited range; a modelling choice within a literature bracket, like the AIS Na density",
     ),
     "E_K": Provenance(
-        ParamSource.LITERATURE, reference="K⁺ Nernst, matches Pospischil RS"
-    ),
+        ParamSource.DERIVED, reference="K⁺ Nernst, matches Pospischil RS"
+    , notes="Nernst potential of K+ at physiological concentrations ([K]o 3 mM, [K]i 140 mM, 37 C), -90 to -100 mV; not a fitted parameter"),
 }
 
 
@@ -414,7 +451,7 @@ TRPV1_PROVENANCE: dict[str, Provenance] = {
     ),
     "E_rev": Provenance(
         ParamSource.LITERATURE,
-        reference="Slightly Ca²⁺-preferring non-selective cation, ~10 mV",
+        reference="Caterina et al. 1997 Nature 389:816 (non-selective cation, Ca2+-preferring, E_rev ~ 0 to +10 mV)",
     ),
 }
 
@@ -433,7 +470,7 @@ TRPV4_PROVENANCE: dict[str, Provenance] = {
         notes="Conservative mid-range density when expressed",
     ),
     "E_rev": Provenance(
-        ParamSource.LITERATURE, reference="Non-selective cation, ~0 mV"
+        ParamSource.LITERATURE, reference="Guler et al. 2002 J Neurosci 22:6408 (non-selective cation, E_rev ~ 0 mV)"
     ),
 }
 
@@ -535,7 +572,7 @@ NMDA_PROVENANCE: dict[str, Provenance] = {
     ),
     "E_rev": Provenance(
         ParamSource.LITERATURE,
-        reference="NMDA non-selective cation, E_rev ≈ 0 mV",
+        reference="Jahr & Stevens 1990 J Neurosci 10:3178 (E_rev ~ 0 mV); Hille 2001, Ion Channels of Excitable Membranes, 3rd ed.",
     ),
     "Mg": Provenance(
         ParamSource.LITERATURE,
@@ -588,14 +625,14 @@ MECHANO_NAV_PROVENANCE: dict[str, Provenance] = {
         ),
     ),
     "v_half0": Provenance(
-        ParamSource.LITERATURE,
+        ParamSource.DERIVED,
         reference="Representative mammalian Nav activation midpoint (Hodgkin-Huxley-type)",
-        notes="Baseline activation half-voltage [mV] for the scalar gain.",
+        notes="Activation midpoint of the HH/Pospischil Na+ current used by the neuron (m_inf of the RS parameterisation); the mechano-shift is applied relative to it",
     ),
     "k_a": Provenance(
-        ParamSource.LITERATURE,
+        ParamSource.DERIVED,
         reference="Hodgkin-Huxley-type Nav activation Boltzmann slope",
-        notes="Activation slope factor [mV].",
+        notes="Activation Boltzmann slope of the HH/Pospischil Na+ current used by the neuron",
     ),
     "v_eval": Provenance(
         ParamSource.ASSUMPTION,
@@ -638,7 +675,7 @@ MECHANO_SYNAPSE_PROVENANCE: dict[str, Provenance] = {
     ),
     "tau_glu": Provenance(
         ParamSource.LITERATURE,
-        reference="Cleft glutamate clearance / uptake time constant (few ms)",
+        reference="Clements et al. 1992 Science 258:1498 (cleft glutamate clears within ~1-2 ms)",
         notes="First-order glutamate pool decay [ms].",
     ),
     "g_ampa": Provenance(
@@ -647,11 +684,11 @@ MECHANO_SYNAPSE_PROVENANCE: dict[str, Provenance] = {
     ),
     "E_ampa": Provenance(
         ParamSource.LITERATURE,
-        reference="AMPA non-selective cation reversal, ~0 mV",
+        reference="Hille 2001, Ion Channels of Excitable Membranes, 3rd ed. (AMPA non-selective cation, E_rev ~ 0 mV)",
     ),
     "K_ampa": Provenance(
         ParamSource.LITERATURE,
-        reference="AMPA is low-affinity (glutamate EC50 ~ hundreds of μM)",
+        reference="Patneau & Mayer 1990 J Neurosci 10:2385 (AMPA glutamate EC50 ~ 0.3-0.5 mM)",
         notes="AMPA glutamate half-saturation [μM].",
     ),
 }
@@ -709,6 +746,7 @@ _REGISTRY: dict[str, dict[str, Provenance]] = {
     "SolitonModel": SOLITON_PROVENANCE,
     "CalciumDynamics": CALCIUM_DYNAMICS_PROVENANCE,
     "KCaChannel": KCA_CHANNEL_PROVENANCE,
+    "SomaticCalcium": SOMATIC_CALCIUM_PROVENANCE,
     "cortical_pyramidal_3comp": CORTICAL_3COMP_PROVENANCE,
     "TRPA1": TRPA1_PROVENANCE,
     "AstrocyteRelay": ASTROCYTE_RELAY_PROVENANCE,

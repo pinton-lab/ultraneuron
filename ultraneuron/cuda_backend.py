@@ -108,6 +108,30 @@ def _build_kernels() -> None:
         bn = 0.125 * math.exp(-(V + 65.0) / 80.0)
         return am, bm, ah, bh, an, bn
 
+    @cuda.jit(device=True, inline=True)
+    def _sigmoid_safe(x):
+        if x >= 0.0:
+            e = math.exp(-min(x, 500.0))
+            return e / (1.0 + e)
+        return 1.0 / (1.0 + math.exp(max(x, -500.0)))
+
+    @cuda.jit(device=True, inline=True)
+    def _mech_kinetics(T, k, ch_T_half, ch_dA, ch_tau_act_inv, ch_tau0,
+                       ch_inact_on, ch_hT_half, ch_hdA, ch_htau_inv, kT):
+        """Mirror of multicompartment._mech_kinetics_scalar."""
+        w_inf = _sigmoid_safe(-ch_dA[k] * (T - ch_T_half[k]) / kT)
+        if ch_tau_act_inv[k] > 0.0:
+            tau_inv = ch_tau_act_inv[k]
+        else:
+            tau_inv = (4.0 * w_inf * (1.0 - w_inf) + 0.01) / ch_tau0[k]
+        if ch_inact_on[k] != 0.0:
+            h_inf = _sigmoid_safe(ch_hdA[k] * (T - ch_hT_half[k]) / kT)
+            h_tau_inv = ch_htau_inv[k]
+        else:
+            h_inf = 1.0
+            h_tau_inv = 0.0
+        return w_inf, tau_inv, h_inf, h_tau_inv
+
     # -------------------------------------------------------------- #
     # 3-compartment kernel (mirrors _rk4_batch_numba_3comp)
     # -------------------------------------------------------------- #
@@ -141,6 +165,16 @@ def _build_kernels() -> None:
         dt, n_steps, primary_compartment_int,
         # Spike step recording
         spike_step_buf, max_spikes,
+        # Time-varying drive (n_drive == 0 → constant tension)
+        drive, n_drive, T_peak_per_vox,
+        ch_T_half, ch_dA, ch_tau_act_inv, ch_tau0,
+        ch_inact_on, ch_hT_half, ch_hdA, ch_htau_inv, kT,
+        # State carry-over (flags: 1 = enabled)
+        init_state, use_init_int, final_state, write_final_int,
+        # Ca readouts
+        ca_peak, write_peak_int, ca_trace, ca_decim,
+        # Mechano-gate initial condition (1 = zero-tension rest values)
+        mech_init_rest_int, w_init_ch, hm_init_ch,
         # Outputs
         spike_counts,
     ):
@@ -180,17 +214,57 @@ def _build_kernels() -> None:
         k4hm = cuda.local.array(MAX_3CH, dtype=float64)
         hm_tmp = cuda.local.array(MAX_3CH, dtype=float64)
 
+        # Kinetics in force for the current step (time-varying drive)
+        w_inf_now = cuda.local.array(MAX_CH, dtype=float64)
+        tau_inv_now = cuda.local.array(MAX_CH, dtype=float64)
+        h_inf_now = cuda.local.array(MAX_CH, dtype=float64)
+        h_tau_inv_now = cuda.local.array(MAX_CH, dtype=float64)
+        T_pk = 0.0
+        f_prev = 1.0
+        if n_drive > 0:
+            T_pk = T_peak_per_vox[idx]
+            f_prev = drive[0]
+        for k in range(n_ch):
+            if f_prev == 1.0:
+                w_inf_now[k] = w_inf_local[k]
+                tau_inv_now[k] = tau_inv_local[k]
+                h_inf_now[k] = h_inf_local[k]
+                h_tau_inv_now[k] = h_tau_inv_local[k]
+            else:
+                wi_, ti_, hi_, hti_ = _mech_kinetics(
+                    T_pk * f_prev, k, ch_T_half, ch_dA, ch_tau_act_inv,
+                    ch_tau0, ch_inact_on, ch_hT_half, ch_hdA, ch_htau_inv, kT)
+                w_inf_now[k] = wi_; tau_inv_now[k] = ti_
+                h_inf_now[k] = hi_; h_tau_inv_now[k] = hti_
+
         for c in range(3):
             for k in range(n_ch):
                 j = c * n_ch + k
-                w[j] = w_inf_local[k]
-                h_mech[j] = h_inf_local[k]
+                if mech_init_rest_int != 0:
+                    w[j] = w_init_ch[k]
+                    h_mech[j] = hm_init_ch[k]
+                else:
+                    w[j] = w_inf_now[k]
+                    h_mech[j] = h_inf_now[k]
 
         V0 = V_rest; V1 = V_rest; V2 = V_rest
         m0 = m0_init; m1 = m0_init; m2 = m0_init
         h0 = h0_init; h1 = h0_init; h2 = h0_init
         n0 = n0_init; n1 = n0_init; n2 = n0_init
         Ca_a = Ca_rest; Ca_b = Ca_rest; Ca_c = Ca_rest
+        if use_init_int != 0:
+            V0 = init_state[idx, 0]; V1 = init_state[idx, 1]; V2 = init_state[idx, 2]
+            m0 = init_state[idx, 3]; m1 = init_state[idx, 4]; m2 = init_state[idx, 5]
+            h0 = init_state[idx, 6]; h1 = init_state[idx, 7]; h2 = init_state[idx, 8]
+            n0 = init_state[idx, 9]; n1 = init_state[idx, 10]; n2 = init_state[idx, 11]
+            for j in range(3 * n_ch):
+                w[j] = init_state[idx, 12 + j]
+                h_mech[j] = init_state[idx, 12 + 3 * n_ch + j]
+            Ca_a = init_state[idx, 12 + 6 * n_ch]
+            Ca_b = init_state[idx, 13 + 6 * n_ch]
+            Ca_c = init_state[idx, 14 + 6 * n_ch]
+        pk_a = Ca_a; pk_b = Ca_b; pk_c = Ca_c
+        n_tr = ca_trace.shape[2]
 
         Cm0 = C_eff_per_vox[0, idx]
         Cm1 = C_eff_per_vox[1, idx]
@@ -210,6 +284,24 @@ def _build_kernels() -> None:
                 V_prev = V1
             else:
                 V_prev = V2
+
+            if n_drive > 0:
+                f_now = drive[step]
+                if f_now != f_prev:
+                    for k in range(n_ch):
+                        if f_now == 1.0:
+                            w_inf_now[k] = w_inf_local[k]
+                            tau_inv_now[k] = tau_inv_local[k]
+                            h_inf_now[k] = h_inf_local[k]
+                            h_tau_inv_now[k] = h_tau_inv_local[k]
+                        else:
+                            wi_, ti_, hi_, hti_ = _mech_kinetics(
+                                T_pk * f_now, k, ch_T_half, ch_dA,
+                                ch_tau_act_inv, ch_tau0, ch_inact_on,
+                                ch_hT_half, ch_hdA, ch_htau_inv, kT)
+                            w_inf_now[k] = wi_; tau_inv_now[k] = ti_
+                            h_inf_now[k] = hi_; h_tau_inv_now[k] = hti_
+                    f_prev = f_now
 
             # ----- k1 -----
             (k1V0, k1V1, k1V2,
@@ -231,8 +323,8 @@ def _build_kernels() -> None:
             for j in range(3 * n_ch):
                 c_idx = j // n_ch
                 k_idx = j - c_idx * n_ch
-                k1w[j] = (w_inf_local[k_idx] - w[j]) * tau_inv_local[k_idx]
-                k1hm[j] = (h_inf_local[k_idx] - h_mech[j]) * h_tau_inv_local[k_idx]
+                k1w[j] = (w_inf_now[k_idx] - w[j]) * tau_inv_now[k_idx]
+                k1hm[j] = (h_inf_now[k_idx] - h_mech[j]) * h_tau_inv_now[k_idx]
 
             # ----- k2 -----
             for j in range(3 * n_ch):
@@ -272,8 +364,8 @@ def _build_kernels() -> None:
             for j in range(3 * n_ch):
                 c_idx = j // n_ch
                 k_idx = j - c_idx * n_ch
-                k2w[j] = (w_inf_local[k_idx] - w_tmp[j]) * tau_inv_local[k_idx]
-                k2hm[j] = (h_inf_local[k_idx] - hm_tmp[j]) * h_tau_inv_local[k_idx]
+                k2w[j] = (w_inf_now[k_idx] - w_tmp[j]) * tau_inv_now[k_idx]
+                k2hm[j] = (h_inf_now[k_idx] - hm_tmp[j]) * h_tau_inv_now[k_idx]
 
             # ----- k3 -----
             for j in range(3 * n_ch):
@@ -313,8 +405,8 @@ def _build_kernels() -> None:
             for j in range(3 * n_ch):
                 c_idx = j // n_ch
                 k_idx = j - c_idx * n_ch
-                k3w[j] = (w_inf_local[k_idx] - w_tmp[j]) * tau_inv_local[k_idx]
-                k3hm[j] = (h_inf_local[k_idx] - hm_tmp[j]) * h_tau_inv_local[k_idx]
+                k3w[j] = (w_inf_now[k_idx] - w_tmp[j]) * tau_inv_now[k_idx]
+                k3hm[j] = (h_inf_now[k_idx] - hm_tmp[j]) * h_tau_inv_now[k_idx]
 
             # ----- k4 -----
             for j in range(3 * n_ch):
@@ -354,8 +446,8 @@ def _build_kernels() -> None:
             for j in range(3 * n_ch):
                 c_idx = j // n_ch
                 k_idx = j - c_idx * n_ch
-                k4w[j] = (w_inf_local[k_idx] - w_tmp[j]) * tau_inv_local[k_idx]
-                k4hm[j] = (h_inf_local[k_idx] - hm_tmp[j]) * h_tau_inv_local[k_idx]
+                k4w[j] = (w_inf_now[k_idx] - w_tmp[j]) * tau_inv_now[k_idx]
+                k4hm[j] = (h_inf_now[k_idx] - hm_tmp[j]) * h_tau_inv_now[k_idx]
 
             # ----- update -----
             s = dt / 6.0
@@ -425,7 +517,34 @@ def _build_kernels() -> None:
                     spike_step_buf[idx, prev_count] = step + 1
                 spike_count_local = prev_count + 1
 
+            if write_peak_int != 0:
+                if Ca_a > pk_a: pk_a = Ca_a
+                if Ca_b > pk_b: pk_b = Ca_b
+                if Ca_c > pk_c: pk_c = Ca_c
+            if ca_decim > 0:
+                if (step + 1) % ca_decim == 0:
+                    i_tr = (step + 1) // ca_decim - 1
+                    if i_tr < n_tr:
+                        ca_trace[idx, 0, i_tr] = Ca_a
+                        ca_trace[idx, 1, i_tr] = Ca_b
+                        ca_trace[idx, 2, i_tr] = Ca_c
+
         spike_counts[idx] = spike_count_local
+        if write_peak_int != 0:
+            ca_peak[idx, 0] = pk_a
+            ca_peak[idx, 1] = pk_b
+            ca_peak[idx, 2] = pk_c
+        if write_final_int != 0:
+            final_state[idx, 0] = V0; final_state[idx, 1] = V1; final_state[idx, 2] = V2
+            final_state[idx, 3] = m0; final_state[idx, 4] = m1; final_state[idx, 5] = m2
+            final_state[idx, 6] = h0; final_state[idx, 7] = h1; final_state[idx, 8] = h2
+            final_state[idx, 9] = n0; final_state[idx, 10] = n1; final_state[idx, 11] = n2
+            for j in range(3 * n_ch):
+                final_state[idx, 12 + j] = w[j]
+                final_state[idx, 12 + 3 * n_ch + j] = h_mech[j]
+            final_state[idx, 12 + 6 * n_ch] = Ca_a
+            final_state[idx, 13 + 6 * n_ch] = Ca_b
+            final_state[idx, 14 + 6 * n_ch] = Ca_c
 
     @cuda.jit(device=True, inline=True)
     def _derivs_3comp(
@@ -580,6 +699,7 @@ def _build_kernels() -> None:
         tensions, phi_arr, dt, n_steps, I_stim,
         ch_g_dens, ch_E_revs, ch_w_inf, ch_tau_inv,
         m0_init, h0_init, n0_init,
+        init_rest_int, ch_w_rest,
         spike_counts,
     ):
         idx = cuda.grid(1)
@@ -607,7 +727,10 @@ def _build_kernels() -> None:
         for k in range(n_ch):
             w_inf_i[k] = ch_w_inf[k, idx]
             tau_inv_i[k] = ch_tau_inv[k, idx]
-            w[k] = w_inf_i[k]
+            if init_rest_int != 0:
+                w[k] = ch_w_rest[k]
+            else:
+                w[k] = w_inf_i[k]
 
         spike_count = 0
         for step in range(n_steps):  # noqa: B007
@@ -692,8 +815,10 @@ def _build_kernels() -> None:
         V_rest, g_Na, g_K, g_L, E_Na, E_K, E_L, C_m,
         is_cortical_int, VT,
         tensions_2d, phi_arr, dt, n_steps, I_stim,
-        ch_g_dens, ch_E_revs, ch_T_halfs, ch_delta_As, ch_tau_0s, ch_kT,
+        ch_g_dens, ch_E_revs, ch_T_halfs, ch_delta_As, ch_tau_0s,
+        ch_tau_act_inv, ch_kT,
         m0_init, h0_init, n0_init,
+        init_rest_int,
         spike_counts,
     ):
         idx = cuda.grid(1)
@@ -718,9 +843,12 @@ def _build_kernels() -> None:
         k4w = cuda.local.array(MAX_CH, dtype=float64)
         wtmp = cuda.local.array(MAX_CH, dtype=float64)
 
-        # Initialise gates at steady state for initial tension
+        # Initialise gates at steady state for the initial tension, or for
+        # zero tension (true rest) when init_rest_int != 0.
         for k in range(n_ch):
             T0 = tensions_2d[0, idx]
+            if init_rest_int != 0:
+                T0 = 0.0
             exponent = -ch_delta_As[k] * (T0 - ch_T_halfs[k]) / ch_kT
             if exponent >= 0.0:
                 e = math.exp(-exponent)
@@ -741,8 +869,11 @@ def _build_kernels() -> None:
                 else:
                     po = 1.0 / (1.0 + math.exp(exponent))
                 w_inf_now[k] = po
-                denom = 4.0 * po * (1.0 - po) + 0.01
-                tau_inv_now[k] = denom / ch_tau_0s[k]
+                if ch_tau_act_inv[k] > 0.0:
+                    tau_inv_now[k] = ch_tau_act_inv[k]
+                else:
+                    denom = 4.0 * po * (1.0 - po) + 0.01
+                    tau_inv_now[k] = denom / ch_tau_0s[k]
 
             k1V, k1m, k1h, k1n = _derivs_single(
                 V, m, h, n, w, phi, is_cortical, VT,
@@ -868,8 +999,20 @@ def rk4_batch_cuda_3comp(
     dt, n_steps,
     primary_compartment,
     spike_step_buf, max_spikes,
+    drive, T_peak_per_vox,
+    ch_T_half, ch_dA, ch_tau_act_inv, ch_tau0,
+    ch_inact_on, ch_hT_half, ch_hdA, ch_htau_inv, kT,
+    init_state, final_state,
+    ca_peak, ca_trace, ca_decim,
+    mech_init_rest, w_init_ch, hm_init_ch,
 ):
-    """CUDA dispatch for :func:`_rk4_batch_numba_3comp`. Same signature."""
+    """CUDA dispatch for :func:`_rk4_batch_numba_3comp`. Same signature.
+
+    Output arrays (``spike_step_buf``, ``final_state``, ``ca_peak``,
+    ``ca_trace``) are written back in place when enabled (same enabling
+    conventions as the Numba kernel: correct shape → enabled, (1, 1)
+    dummy → disabled).
+    """
     from numba import cuda  # noqa: PLC0415
 
     kernels = _ensure_kernels()
@@ -910,6 +1053,33 @@ def rk4_batch_cuda_3comp(
     )
     d_spike_counts = cuda.device_array(N, dtype=np.int32)
 
+    n_state = 15 + 6 * n_ch
+    n_drive = int(np.asarray(drive).shape[0])
+    use_init = (init_state.ndim == 2 and init_state.shape == (N, n_state))
+    write_final = (final_state.ndim == 2 and final_state.shape == (N, n_state))
+    write_peak = (ca_peak.ndim == 2 and ca_peak.shape == (N, 3))
+    ca_decim = int(ca_decim)
+    write_trace = ca_decim > 0 and ca_trace.shape[0] == N
+
+    def _dev(a, dtype=np.float64):
+        return cuda.to_device(np.ascontiguousarray(a, dtype=dtype))
+
+    d_drive = _dev(drive if n_drive > 0 else np.zeros(1))
+    d_T_peak = _dev(T_peak_per_vox if n_drive > 0 else np.zeros(1))
+    d_ch = [_dev(a if len(a) else np.zeros(1)) for a in (
+        ch_T_half, ch_dA, ch_tau_act_inv, ch_tau0,
+        ch_inact_on, ch_hT_half, ch_hdA, ch_htau_inv)]
+    d_init = _dev(init_state if use_init else np.zeros((1, 1)))
+    d_final = (cuda.device_array((N, n_state), dtype=np.float64) if write_final
+               else _dev(np.zeros((1, 1))))
+    d_ca_peak = (cuda.device_array((N, 3), dtype=np.float64) if write_peak
+                 else _dev(np.zeros((1, 1))))
+    if write_trace:
+        d_ca_trace = cuda.device_array(ca_trace.shape, dtype=np.float32)
+    else:
+        d_ca_trace = _dev(np.zeros((1, 1, 1), dtype=np.float32), np.float32)
+        ca_decim = 0
+
     blocks, threads = _launch_config(N)
     n_kca = int(kca_g.shape[0])
     n_trp = int(trp_g_Po.shape[0])
@@ -929,12 +1099,25 @@ def rk4_batch_cuda_3comp(
         float(V_rest), float(m0_init), float(h0_init), float(n0_init),
         float(dt), int(n_steps), int(primary_compartment),
         d_spike_step_buf, int(max_spikes),
+        d_drive, int(n_drive), d_T_peak,
+        *d_ch, float(kT),
+        d_init, int(use_init), d_final, int(write_final),
+        d_ca_peak, int(write_peak), d_ca_trace, int(ca_decim),
+        int(mech_init_rest),
+        _dev(w_init_ch if len(w_init_ch) else np.zeros(1)),
+        _dev(hm_init_ch if len(hm_init_ch) else np.zeros(1)),
         d_spike_counts,
     )
     spike_counts = d_spike_counts.copy_to_host()
-    # Write back the spike-step buffer so callers can read it.
+    # Write back the output buffers so callers can read them.
     if max_spikes > 0:
         spike_step_buf[...] = d_spike_step_buf.copy_to_host()
+    if write_final:
+        final_state[...] = d_final.copy_to_host()
+    if write_peak:
+        ca_peak[...] = d_ca_peak.copy_to_host()
+    if write_trace:
+        ca_trace[...] = d_ca_trace.copy_to_host()
     return spike_counts
 
 
@@ -944,6 +1127,7 @@ def rk4_batch_cuda(
     tensions, phi_arr, dt, n_steps, I_stim,
     ch_g_dens, ch_E_revs, ch_w_inf, ch_tau_inv,
     m0, h0, n0,
+    init_rest=0, ch_w_rest=None,
 ):
     """CUDA dispatch for :func:`_rk4_batch_numba`. Same signature."""
     from numba import cuda  # noqa: PLC0415
@@ -974,6 +1158,10 @@ def rk4_batch_cuda(
         d_tensions, d_phi, float(dt), int(n_steps), float(I_stim),
         d_g, d_E, d_w_inf, d_tau_inv,
         float(m0), float(h0), float(n0),
+        int(init_rest),
+        cuda.to_device(np.ascontiguousarray(
+            ch_w_rest if (ch_w_rest is not None and len(ch_w_rest)) else np.zeros(1),
+            dtype=np.float64)),
         d_spike,
     )
     return d_spike.copy_to_host()
@@ -985,8 +1173,14 @@ def rk4_batch_cuda_tv(
     tensions_2d, phi_arr, dt, n_steps, I_stim,
     ch_g_dens, ch_E_revs, ch_T_halfs, ch_delta_As, ch_tau_0s, ch_kT,
     m0, h0, n0,
+    init_rest=0,
+    ch_tau_act_inv=None,
 ):
-    """CUDA dispatch for :func:`_rk4_batch_numba_tv`. Same signature."""
+    """CUDA dispatch for :func:`_rk4_batch_numba_tv`.
+
+    ``ch_tau_act_inv[k] > 0`` selects channel k's fixed activation tau
+    (``None`` → all zeros → bell-shaped ``tau_0`` formula).
+    """
     from numba import cuda  # noqa: PLC0415
     kernels = _ensure_kernels()
     kernel = kernels["1comp_tv"]
@@ -1002,6 +1196,10 @@ def rk4_batch_cuda_tv(
     d_T_halfs = cuda.to_device(np.ascontiguousarray(ch_T_halfs, dtype=np.float64))
     d_delta_As = cuda.to_device(np.ascontiguousarray(ch_delta_As, dtype=np.float64))
     d_tau_0s = cuda.to_device(np.ascontiguousarray(ch_tau_0s, dtype=np.float64))
+    if ch_tau_act_inv is None:
+        ch_tau_act_inv = np.zeros_like(np.asarray(ch_tau_0s, dtype=np.float64))
+    d_tau_act_inv = cuda.to_device(
+        np.ascontiguousarray(ch_tau_act_inv, dtype=np.float64))
     d_spike = cuda.device_array(N, dtype=np.int32)
 
     blocks, threads = _launch_config(N)
@@ -1010,11 +1208,36 @@ def rk4_batch_cuda_tv(
         float(E_Na), float(E_K), float(E_L), float(C_m),
         int(bool(is_cortical)), float(VT),
         d_tensions, d_phi, float(dt), int(n_steps), float(I_stim),
-        d_g, d_E, d_T_halfs, d_delta_As, d_tau_0s, float(ch_kT),
+        d_g, d_E, d_T_halfs, d_delta_As, d_tau_0s, d_tau_act_inv,
+        float(ch_kT),
         float(m0), float(h0), float(n0),
+        int(init_rest),
         d_spike,
     )
     return d_spike.copy_to_host()
+
+
+def resolve_backend(requested: str = "auto") -> str:
+    """Map a requested backend name to the concrete kernel to use.
+
+    ``"auto"`` (the default of every public ``simulate_*`` API) resolves to
+    the ``AMN_BACKEND`` environment variable when it is set, otherwise to
+    ``"cuda"`` when a CUDA device is visible and ``"numba"`` when it is not.
+    Explicit ``"cuda"`` / ``"numba"`` pass through unchanged, so an explicit
+    ``"cuda"`` request on a machine without a GPU still produces the
+    fall-back warning from :func:`maybe_warn_unavailable`.
+    """
+    import os  # noqa: PLC0415
+
+    if requested == "auto":
+        env = os.environ.get("AMN_BACKEND", "").strip().lower()
+        if env in ("cuda", "numba"):
+            return env
+        return "cuda" if is_cuda_available() else "numba"
+    if requested not in ("cuda", "numba"):
+        msg = f"backend must be 'auto', 'cuda' or 'numba', got {requested!r}"
+        raise ValueError(msg)
+    return requested
 
 
 def maybe_warn_unavailable(requested: str) -> None:

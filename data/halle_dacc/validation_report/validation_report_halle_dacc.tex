@@ -25,7 +25,7 @@
 
 \title{Output Validation Report\\\large Halle CTX-500 Transcranial Bowl @ 500 kHz (auto-aimed at left dACC)}
 \author{\texttt{halle\_dacc}}
-\date{2026-06-05T14:07:24-04:00}
+\date{2026-10-06T15:37:15-04:00}
 
 \newcommand{\figref}[1]{\textbf{Figure~\ref{#1}}}
 
@@ -270,7 +270,7 @@ FWHM lateral ($y$)                   & 3.70      & mm \\
 FWHM elevation ($z$)                 & 3.70      & mm \\
 FWHM axial ($x$)                     & 22.18      & mm \\
 $\langle I \rangle$ in $-6$\,dB vol  & 5.29   & W/cm$^2$ \\
-Peak particle velocity               & 1.649e-08 & m/s \\
+Peak particle velocity               & 1.186e-08 & m/s \\
 ARF impulse / pulse                  & 6.460e+00 & Pa$\cdot$s \\
 \bottomrule
 \end{tabular}
@@ -292,12 +292,6 @@ ARF impulse / pulse                  & 6.460e+00 & Pa$\cdot$s \\
 \end{figure}
 
 
-
-\subsection{Pressure-wave propagation --- 3D animation}
-\begin{figure}[H]\centering
-\animategraphics[autoplay,loop,controls,poster=last,width=0.72\linewidth]{10}{pressanim/frame}{0}{119}
-\caption{Time-resolved acoustic pressure propagating through the full-resolution skull (napari): a cool $|p|$ wave envelope over a warm cumulative-intensity glow that traces the deposited-energy beam path and focus; viewpoint slowly orbits. (120 frames, 10~fps loop; standalone MP4 \texttt{wave\_propagation\_3d.mp4}). \textit{Requires a JavaScript-capable PDF viewer (e.g.\ Adobe Acrobat); static viewers show the poster frame.}}
-\end{figure}
 
 
 
@@ -331,12 +325,12 @@ The bioheat time step is $dt_{\mathrm{heat}} = 1.50e+00$~s.
 \midrule
 Skull absorption fraction $f_{\mathrm{abs}}^{\mathrm{skull}}$ (Pinton 2012) & 0.30 & --- \\
 \midrule
-Peak $\Delta T$ at session end             & 0.9388 & K \\
-Peak $\Delta T$ over the session           & 0.9388 & K \\
-Brain-tissue peak $\Delta T$ (final)       & 0.7425 & K \\
-Skull peak $\Delta T$ (final)              & 0.9388 & K \\
+Peak $\Delta T$ at session end             & 0.9242 & K \\
+Peak $\Delta T$ over the session           & 0.9364 & K \\
+Brain-tissue peak $\Delta T$ (final)       & 0.7351 & K \\
+Skull peak $\Delta T$ (final)              & 0.9242 & K \\
 $\Delta T$ per single-burst pulse (no diffusion) & 0.0222 & K \\
-CEM43 thermal dose (peak voxel)            & 8.110e-04 & min \\
+CEM43 thermal dose (peak voxel)            & 8.172e-04 & min \\
 \bottomrule
 \end{tabular}
 \caption{Thermal-rise metrics from the bioheat solve over the session-level theta-burst schedule.  Heat source $Q = 2\alpha I$ with the Pinton 2012 skull-absorption fraction $f_{\mathrm{abs}}^{\mathrm{skull}} = 0.30$ applied to skull voxels only ($c > 1600$\,m/s); soft tissue uses the full $\alpha$. The CEM43 dose is computed at the spatial-peak voxel by Sapareto--Dewey integration over the captured frame series. The single-burst $\Delta T$ row is the conduction-free upper bound $Q\cdot t_{\mathrm{on}}/(\rho c)$ at the peak voxel and is included for sanity checking.}
@@ -363,12 +357,6 @@ CEM43 thermal dose (peak voxel)            & 8.110e-04 & min \\
 
 
 
-\subsection{Temperature rise --- 3D animation}
-\begin{figure}[H]\centering
-\animategraphics[autoplay,loop,controls,poster=last,width=0.72\linewidth]{10}{tempanim/frame}{0}{119}
-\caption{Bioheat $\Delta T$ building over the session (napari, inferno, gamma-stretched so the deeper focal rise reads beneath the dominant skull heating). (120 frames, 10~fps loop; standalone MP4 \texttt{temperature\_3d.mp4}). \textit{Requires a JavaScript-capable PDF viewer (e.g.\ Adobe Acrobat); static viewers show the poster frame.}}
-\end{figure}
-
 
 
 
@@ -389,11 +377,11 @@ through that voxel summarise the transient.
 \begin{table}[h!]\centering\small
 \begin{tabular}{lr}
 \hline
-Peak $|u_x|$ (trace voxel)              & 0.402\,$\mu$m \\
+Peak $|u_x|$ (trace voxel)              & 0.356\,$\mu$m \\
 Time to peak                            & 20.0\,ms \\
-$|u_x|$ at end of ON window             & 0.402\,$\mu$m \\
-Visco-elastic relaxation $\tau$ (OFF fit) & 32.6\,ms \\
-Field-wide max $|u_x|$ (XY/XZ snapshots) & 0.402\,$\mu$m \\
+$|u_x|$ at end of ON window             & 0.355\,$\mu$m \\
+Visco-elastic relaxation $\tau$ (OFF fit) & 32.4\,ms \\
+Field-wide max $|u_x|$ (XY/XZ snapshots) & 0.356\,$\mu$m \\
 Shear time-step                          & 33.24\,$\mu$s \\
 Number of shear time-steps               & 6018 \\
 \hline
@@ -429,12 +417,6 @@ Number of shear time-steps               & 6018 \\
 \end{figure}
 
 
-
-\subsection{Shear displacement --- 3D animation}
-\begin{figure}[H]\centering
-\animategraphics[autoplay,loop,controls,poster=last,width=0.72\linewidth]{10}{shearanim/frame}{0}{119}
-\caption{Acoustic-radiation-force displacement magnitude $|u|$ (napari, viridis): the focal push appears and relaxes over the pulse window. (120 frames, 10~fps loop; standalone MP4 \texttt{shear\_propagation\_3d.mp4}). \textit{Requires a JavaScript-capable PDF viewer (e.g.\ Adobe Acrobat); static viewers show the poster frame.}}
-\end{figure}
 
 
 
@@ -472,8 +454,8 @@ three-camera 3-D iso-surface rendering.
 \textbf{Quantity} & \textbf{Peak (full)} & \textbf{Peak (brain only)} & \textbf{Peak (skull)} & \textbf{Unit} \\
 \midrule
 $|\mathbf{F}_{\mathrm{ARF}}|$              & 3.230e+02     & 3.230e+02     & 1.806e+01     & N/m$^3$ \\
-$\varepsilon_{\mathrm{eq}}$                & 2.609e-05  & 2.609e-05  & 0.000e+00  & — \\
-$T = K_a\,|\varepsilon_{\mathrm{vol}}|$    & 6.524e+00 & 6.524e+00 & 0.000e+00 & N/m \\
+$\varepsilon_{\mathrm{eq}}$                & 2.313e-05  & 2.313e-05  & 0.000e+00  & — \\
+$T = K_a\,|\varepsilon_{\mathrm{vol}}|$    & 5.782e+00 & 5.782e+00 & 0.000e+00 & N/m \\
 \bottomrule
 \end{tabular}
 \caption{Peak elastic-output magnitudes from the static shear-FDTD equilibrium.  The brain-only column excludes voxels with $c>1600$\,m/s; ARF concentrates in skull due to absorption while strain and tension peak near the focal lobe.}\label{tab:elastic_outputs}
@@ -490,7 +472,7 @@ $T = K_a\,|\varepsilon_{\mathrm{vol}}|$    & 6.524e+00 & 6.524e+00 & 0.000e+00 &
 \subsection{Equivalent deviatoric strain — tensor snapshots}\label{sec:eeq_time}
 \begin{figure}[H]\centering
 \includegraphics[width=\linewidth]{elastic_eeq_time.png}
-\caption{True deviatoric strain tensor $\varepsilon_{\mathrm{eq}} = \sqrt{\tfrac{2}{3}\,\varepsilon^{\mathrm{dev}}_{ij}\varepsilon^{\mathrm{dev}}_{ij}}$ at five times spanning one Yaakub PRF period, computed by central differences on the full 3-D displacement trajectory ``displacement\_4d.npy''.  Three columns trace the ON ramp-up; the last two trace the OFF relaxation.  Top row: $x$--$y$ slice at mid elevation; bottom: $x$--$z$ slice at mid lateral.  Cyan contour: skull mask.  Field-wide max $\varepsilon_{\mathrm{eq}} = 2.61e-05$.}\label{fig:eeq_time}
+\caption{True deviatoric strain tensor $\varepsilon_{\mathrm{eq}} = \sqrt{\tfrac{2}{3}\,\varepsilon^{\mathrm{dev}}_{ij}\varepsilon^{\mathrm{dev}}_{ij}}$ at five times spanning one Yaakub PRF period, computed by central differences on the full 3-D displacement trajectory ``displacement\_4d.npy''.  Three columns trace the ON ramp-up; the last two trace the OFF relaxation.  Top row: $x$--$y$ slice at mid elevation; bottom: $x$--$z$ slice at mid lateral.  Cyan contour: skull mask.  Field-wide max $\varepsilon_{\mathrm{eq}} = 2.31e-05$.}\label{fig:eeq_time}
 \end{figure}
 
 
@@ -499,7 +481,7 @@ $T = K_a\,|\varepsilon_{\mathrm{vol}}|$    & 6.524e+00 & 6.524e+00 & 0.000e+00 &
 \subsection{Membrane tension — tensor snapshots}\label{sec:tension_time}
 \begin{figure}[H]\centering
 \includegraphics[width=\linewidth]{elastic_tension_time.png}
-\caption{Membrane tension $T = K_A\,\alpha\,\varepsilon_{\mathrm{eq}}$ at the same five times as Fig.~\ref{fig:eeq_time}, with $K_A = 0.25$\,N/m and the multi-scale tissue\,$\to$\,membrane coupling factor $\alpha = 1000$.  Cyan contour: skull mask.  Lime contour: Piezo1 firing threshold (0.5\,mN/m).  Field-wide max $T = 6.52$\,mN/m.}\label{fig:tension_time}
+\caption{Membrane tension $T = K_A\,\alpha\,\varepsilon_{\mathrm{eq}}$ at the same five times as Fig.~\ref{fig:eeq_time}, with $K_A = 0.25$\,N/m and the multi-scale tissue\,$\to$\,membrane coupling factor $\alpha = 1000$.  Cyan contour: skull mask.  Lime contour: Piezo1 firing threshold (0.5\,mN/m).  Field-wide max $T = 5.78$\,mN/m.}\label{fig:tension_time}
 \end{figure}
 
 
@@ -557,7 +539,7 @@ $\alpha = 1000$
 \texttt{strain\_to\_membrane\_tension}; lifts the voxel-scale
 deviatoric strain $\varepsilon_{\mathrm{eq}}$ into the bilayer areal strain).
 Peak $T$ across the field is
-6.52\,mN/m.  Each neuron is driven by
+5.78\,mN/m.  Each neuron is driven by
 a within-burst half-sine tension envelope $T(t) = T_{\mathrm{peak}}\sin(\pi t/T_{\mathrm{pulse}})$
 with $T_{\mathrm{pulse}} = 20.0$\,ms (theta-burst
 ON window from Section~\ref{sec:sequence}); per-voxel spike trains are recorded
@@ -574,15 +556,15 @@ replay the single-burst response across 400 theta groups
 \toprule
 \textbf{Quantity} & \textbf{Value} & \textbf{Unit} \\
 \midrule
-Voxels above tension threshold      & 5468 & --- \\
-Voxels with $\geq 1$ spike / burst  & 5468 & --- \\
+Voxels above tension threshold      & 3531 & --- \\
+Voxels with $\geq 1$ spike / burst  & 3531 & --- \\
 Active fraction (per burst)         & 1.000 & --- \\
-Peak per-voxel rate                 & 300.00 & Hz \\
-Median first-spike latency          & 2.79 & ms \\
-$10$th / $90$th \%ile latency       & 2.02 / 11.45 & ms \\
-Mean spikes / firing voxel / burst  & 3.73 & --- \\
-50\,\%-of-peak iso volume           & 7025.4 & mm$^3$ \\
-25\,\%-of-peak iso volume           & 8523.3 & mm$^3$ \\
+Peak per-voxel rate                 & 250.00 & Hz \\
+Median first-spike latency          & 4.47 & ms \\
+$10$th / $90$th \%ile latency       & 3.47 / 12.52 & ms \\
+Mean spikes / firing voxel / burst  & 3.47 & --- \\
+50\,\%-of-peak iso volume           & 4396.3 & mm$^3$ \\
+25\,\%-of-peak iso volume           & 5432.2 & mm$^3$ \\
 \bottomrule
 \end{tabular}
 \caption{Population neural-response metrics for a single theta-burst ON window.}\label{tab:neural_outputs}
@@ -633,7 +615,7 @@ Mean spikes / firing voxel / burst  & 3.73 & --- \\
 \subsection{Firing volume vs.\ time}\label{sec:neural_volume_t}
 \begin{figure}[H]\centering
 \includegraphics[width=\linewidth]{neural_volume_t.png}
-\caption{Volumetric recruitment within the burst.  (a) Cumulative volume of brain that has fired at least one spike by time $t$; the navy band marks the pulse-on window.  (b) Spike-active volume in a rolling 1\,ms window --- the volumetric analogue of a population PSTH.  Volumes use the FDTD voxel pitch ($\sim 1.87$~mm$^3$ / voxel).  Cumulative volume at pulse end: 10224.9~mm$^3$; peak instantaneous active volume: 1065.9~mm$^3$.}\label{fig:neural_volume_t}
+\caption{Volumetric recruitment within the burst.  (a) Cumulative volume of brain that has fired at least one spike by time $t$; the navy band marks the pulse-on window.  (b) Spike-active volume in a rolling 1\,ms window --- the volumetric analogue of a population PSTH.  Volumes use the FDTD voxel pitch ($\sim 1.87$~mm$^3$ / voxel).  Cumulative volume at pulse end: 6602.8~mm$^3$; peak instantaneous active volume: 1047.2~mm$^3$.}\label{fig:neural_volume_t}
 \end{figure}
 
 \subsection{Mechanosensitive gating curves}\label{sec:neural_gating}
@@ -649,12 +631,6 @@ Mean spikes / firing voxel / burst  & 3.73 & --- \\
 \end{figure}
 
 
-
-\subsection{Neural firing --- 3D animation}
-\begin{figure}[H]\centering
-\animategraphics[autoplay,loop,controls,poster=last,width=0.72\linewidth]{10}{neuralanim/frame}{0}{119}
-\caption{Flashing neurons (soft cyan points, one per firing voxel) pulsing at their spike times over a smooth cumulative firing-density glow, with the faint target ROI; inside the skull. (120 frames, 10~fps loop; standalone MP4 \texttt{neural\_firing\_3d.mp4}). \textit{Requires a JavaScript-capable PDF viewer (e.g.\ Adobe Acrobat); static viewers show the poster frame.}}
-\end{figure}
 
 
 
@@ -678,10 +654,10 @@ cycle $\times$ on-time rather than tracking the carrier.
 \toprule
 \textbf{Quantity} & \textbf{Value} & \textbf{Unit} \\
 \midrule
-Focal peak tension                 & 6.52   & mN/m \\
-Peak astrocytic-NMDA drive         & 0.040          & 0--1 \\
+Focal peak tension                 & 5.78   & mN/m \\
+Peak astrocytic-NMDA drive         & 0.012          & 0--1 \\
 Recruited voxels (drive $>$ 0.05)  & 0 & voxels \\
-Focal depolarisation (500 ms)      & 11.1 & mV \\
+Focal depolarisation (500 ms)      & 7.5 & mV \\
 Focal spikes (500 ms)              & 0                       & -- \\
 Duty cycle / session               & 0.10 / 80 & -- / s \\
 \bottomrule
@@ -718,11 +694,11 @@ post-synaptic Hodgkin--Huxley neuron through an AMPA/NMDA synapse.
 \toprule
 \textbf{Quantity} & \textbf{Value} & \textbf{Unit} \\
 \midrule
-Focal peak tension                 & 6.55    & mN/m \\
-Peak combined pathway gain         & 11.65   & $\times$ \\
-Recruited voxels (gain $>$ 1.5)  & 32191 & voxels \\
-Focal depolarisation (120 ms)      & 116.0 & mV \\
-Focal spikes (120 ms)              & 11                        & -- \\
+Focal peak tension                 & 5.78    & mN/m \\
+Peak combined pathway gain         & 9.68   & $\times$ \\
+Recruited voxels (gain $>$ 1.5)  & 17143 & voxels \\
+Focal depolarisation (120 ms)      & 116.1 & mV \\
+Focal spikes (120 ms)              & 10                        & -- \\
 $P_r$ range / $\alpha_{\mathrm{NMDA}}$ & 0.10--0.60 / 1.0 & -- \\
 \bottomrule
 \end{tabular}

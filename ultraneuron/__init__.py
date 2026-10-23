@@ -16,17 +16,28 @@ from .channel_library import (
     get_channel,
     get_neuron_profile,
 )
-from .calcium import CalciumDynamics, KCaChannel
+from .calcium import (
+    CalciumDynamics,
+    KCaChannel,
+    PulsedProtocol,
+    SomaticCalcium,
+    SomaticSessionResult,
+    session_somatic_calcium,
+    session_spike_train,
+)
 from .channels import MechanosensitiveChannel, strain_to_membrane_tension
 from .nmda import NMDAReceptor, nmdar_stretch_factor
 from .compartments import Compartment, CompartmentalGeometry, cortical_pyramidal_3comp
 from .multicompartment import (
     MulticompartmentMechanoHHNeuron,
+    peak_steady_initial_state,
+    rest_initial_state,
     simulate_map_3comp,
     simulate_map_3comp_with_spike_times,
 )
 from .neuron import (
     K_MECHANO_NAV,
+    MECHANO_INIT_MODES,
     MechanoHHNeuron,
     bioheat_to_absolute_temperature,
     nav_current_gain,
@@ -47,6 +58,9 @@ from .strain import compute_strain_invariants, compute_strain_tensor
 from .thermosensors import TRPV1, TRPV4, TRPThermosensorChannel
 
 __all__ = [
+    "MECHANO_INIT_MODES",
+    "peak_steady_initial_state",
+    "rest_initial_state",
     "AstrocyteRelay",
     "CalciumDynamics",
     "Compartment",
@@ -66,9 +80,12 @@ __all__ = [
     "TREK2",
     "TRPA1",
     "ParamSource",
+    "PulsedProtocol",
     "Provenance",
     "SOLITON_PROVENANCE",
     "SolitonModel",
+    "SomaticCalcium",
+    "SomaticSessionResult",
     "TRPThermosensorChannel",
     "TRPV1",
     "TRPV4",
@@ -87,6 +104,8 @@ __all__ = [
     "simulate_map",
     "simulate_map_3comp",
     "simulate_map_3comp_with_spike_times",
+    "session_somatic_calcium",
+    "session_spike_train",
     "simulate_synaptic_relay",
     "soliton_excitation",
     "strain_to_membrane_tension",

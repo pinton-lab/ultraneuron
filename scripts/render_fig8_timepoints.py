@@ -14,8 +14,8 @@ from pathlib import Path
 import matplotlib
 
 # Compute backend for the per-voxel HH integration.  Override at the
-# shell with AMN_BACKEND=numba (CPU) or AMN_BACKEND=cuda (GPU, default).
-_BACKEND = os.environ.get("AMN_BACKEND", "cuda")
+# shell with AMN_BACKEND=numba (CPU) or AMN_BACKEND=cuda; default 'auto' = GPU when visible.
+_BACKEND = "auto"  # resolved by ultraneuron.cuda_backend.resolve_backend (AMN_BACKEND env override)
 
 matplotlib.use("Agg", force=True)
 import matplotlib.pyplot as plt

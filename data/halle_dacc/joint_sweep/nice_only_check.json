@@ -1,0 +1,19 @@
+{
+ "description": "S3 neuron with g_Piezo1 = g_TREK1 = 0 (cavitation only), per-voxel pressure s*p_can, strain s^2*eps_can, 20 ms, dt 1 us, GPU",
+ "runs": [
+  {
+   "s": 1.0,
+   "focal_ppp_mpa": 0.5,
+   "eligible_voxels": 77248,
+   "firing_voxels": 0,
+   "spikes": 0
+  },
+  {
+   "s": 2.0,
+   "focal_ppp_mpa": 1.0,
+   "eligible_voxels": 241494,
+   "firing_voxels": 0,
+   "spikes": 0
+  }
+ ]
+}

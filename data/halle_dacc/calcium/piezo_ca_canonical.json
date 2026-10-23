@@ -1,0 +1,35 @@
+{
+ "n_fire": 3531,
+ "peak_firing_uM": {
+  "dendrite": {
+   "median": 9.996712684631348,
+   "min": 2.224698066711426,
+   "max": 15.782574653625488
+  },
+  "soma": {
+   "median": 2.3221166133880615,
+   "min": 0.4906225800514221,
+   "max": 3.726891040802002
+  },
+  "AIS": {
+   "median": 0.05000000074505806,
+   "min": 0.05000000074505806,
+   "max": 0.05000000074505806
+  }
+ },
+ "pool": {
+  "Ca_rest_uM": 0.05,
+  "tau_decay_ms": 50.0,
+  "flux_factor": 0.5
+ },
+ "ca_trace_dt_ms": 0.1,
+ "wall_s": 117.89373826421797,
+ "backend": "cuda",
+ "spike_outputs_identical_to_neural_results": {
+  "spike_count_map": true,
+  "spike_voxel_idx": true,
+  "spike_offsets": true,
+  "spike_times_ms": true
+ },
+ "git_sha": "b141c0a"
+}

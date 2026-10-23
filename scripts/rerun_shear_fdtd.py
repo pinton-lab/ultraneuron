@@ -24,7 +24,7 @@ import sys
 
 import numpy as np
 
-from shearwave import shear_fdtd_staggered
+from shearwave import shear_fdtd
 
 if len(sys.argv) > 1:
     SIM_DIR = Path(sys.argv[1])
@@ -117,7 +117,7 @@ def record(it, u_center):
 
 
 print("\nRunning shear-FDTD...")
-u, v = shear_fdtd_staggered(
+u, v = shear_fdtd(
     bx=b0, by=None, bz=None,
     rho=rho0, mu=mu,
     dX=dx2, dY=dy2, dZ=dz2,

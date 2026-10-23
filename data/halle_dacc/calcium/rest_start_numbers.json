@@ -1,0 +1,564 @@
+{
+ "description": "File-sourced numbers for the rest-start canonical halle_dacc run.",
+ "provenance": {
+  "git_sha": "16840b62f3b04b4c76ec15e9f6924d119a5cf3f9",
+  "generating_script": "scripts/rest_start_numbers.py",
+  "date": "2026-10-06T17:53:26-04:00",
+  "mechano_init": "rest",
+  "period1_initial_state": "rest_initial_state(neuron, N, calcium=True) (= default initial_state=None)",
+  "config": "validation_report/configs/halle_dacc.py",
+  "input_files": [
+   "data/halle_dacc/neural_results.npz",
+   "data/halle_dacc/displacement.npy",
+   "data/halle_dacc/c_ds.npy",
+   "data/halle_dacc/grid_params.npz",
+   "data/halle_dacc/validation_report/manifest.json"
+  ],
+  "backend": "cuda",
+  "cuda_visible_devices": "0",
+  "not_overwritten": "data/halle_dacc/calcium/burst_periodicity.json (legacy peak_steady period-1 init)"
+ },
+ "params": {
+  "K_A": 0.25,
+  "alpha": 1000.0,
+  "threshold_mNm": 0.5,
+  "dt_ms": 0.001,
+  "t_on_ms": 20.0,
+  "period_ms": 200.0,
+  "off_mode": "exp",
+  "tau_relax_ms": 32.42024559090537,
+  "tau_relax_source": "validation_report/manifest.json:displacement_outputs.relax_tau_ms"
+ },
+ "single_burst": {
+  "source": "data/halle_dacc/neural_results.npz",
+  "n_firing_voxels": 3531,
+  "n_spikes_total": 12250,
+  "on_window_ms": 20.0,
+  "latency_encoding": "latency_map = time of first spike [ms] for firing voxels, NaN for non-firing voxels (initialised NaN in simulate_map_3comp_with_spike_times)",
+  "latency_nan_outside_firing": true,
+  "latency_map_equals_first_csr_spike": true,
+  "first_spike_latency_ms": {
+   "median": 4.468999862670898,
+   "p10": 3.4700000286102295,
+   "p90": 12.520999908447266,
+   "min": 3.4489998817443848,
+   "max": 19.96500015258789,
+   "mean": 6.390450017575804
+  },
+  "rate_definition": "rate_map = spike_count_map / (duration_ms*1e-3), i.e. spikes in the single 20 ms ON window divided by 0.020 s (scripts/run_neural_sim.py); not an instantaneous ISI rate",
+  "peak_rate_hz": 250.0,
+  "peak_rate_spike_count": 5,
+  "peak_rate_T_mNm": 2.9726369380950928,
+  "median_rate_firing_hz": 200.0,
+  "median_spikes_per_firing_voxel": 4.0,
+  "max_spikes_per_voxel": 5,
+  "dt_ms": 0.001,
+  "sim_git_sha": "b141c0a",
+  "integrator": "rk4"
+ },
+ "voxels": {
+  "n_canonical_firing": 3531,
+  "n_silent_highest_tension": 1000,
+  "n_eligible": 77248,
+  "firing_T_range_mNm": [
+   2.2126965522766113,
+   5.781622886657715
+  ],
+  "silent_T_range_mNm": [
+   2.035360097885132,
+   2.212400436401367
+  ],
+  "tension_matches_npz_T_peak_max_abs": 0.0
+ },
+ "periodicity": {
+  "S2": {
+   "n_periods_run": 3,
+   "wall_s": 65.28041418967769,
+   "channels": [
+    "Piezo1",
+    "TREK-1"
+   ],
+   "on_spikes_per_burst": [
+    12250,
+    12250,
+    12250
+   ],
+   "on_spikes_per_burst_canonical_firing": [
+    12250,
+    12250,
+    12250
+   ],
+   "on_spikes_per_burst_silent_set": [
+    0,
+    0,
+    0
+   ],
+   "on_firing_voxels_per_burst": [
+    3531,
+    3531,
+    3531
+   ],
+   "off_window_spikes_per_period": [
+    7729,
+    7728,
+    7728
+   ],
+   "burst1_vs_canonical_npz": {
+    "frac_exact": 1.0,
+    "frac_within_one_step": 1.0,
+    "frac_same_count": 1.0,
+    "n_not_exact": 0,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.0
+   },
+   "burst2_vs_burst1": {
+    "frac_exact": 0.6682851467667181,
+    "frac_within_one_step": 1.0,
+    "frac_same_count": 1.0,
+    "n_not_exact": 1503,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.001
+   },
+   "burst3_vs_burst1": {
+    "frac_exact": 0.6682851467667181,
+    "frac_within_one_step": 1.0,
+    "frac_same_count": 1.0,
+    "n_not_exact": 1503,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.001
+   },
+   "burst3_vs_burst2": {
+    "frac_exact": 1.0,
+    "frac_within_one_step": 1.0,
+    "frac_same_count": 1.0,
+    "n_not_exact": 0,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.0
+   },
+   "state_burst2_start_vs_rest": {
+    "V_mV": {
+     "dend": {
+      "max": 0.0023947501761796275,
+      "median": 0.0021899512594529824
+     },
+     "soma": {
+      "max": 0.0022336294599796247,
+      "median": 0.002038262631444354
+     },
+     "ais": {
+      "max": 0.0022335009632996616,
+      "median": 0.0020381458593590196
+     }
+    },
+    "HH_gate_max_abs": {
+     "max": 1.4684447486672768e-06,
+     "m": 3.887813753713446e-07,
+     "h": 7.390434353382602e-08,
+     "n": 1.4684447486672768e-06
+    },
+    "mechano_gate_max_abs": {
+     "max": 8.166280967191625e-07,
+     "w_max": 8.166280967191625e-07,
+     "h_mech_max": 0.0,
+     "per_channel_compartment": {
+      "w_Piezo1_dend": 8.166280967191625e-07,
+      "h_mech_Piezo1_dend": 0.0,
+      "w_TREK-1_dend": 6.356170769343493e-07,
+      "h_mech_TREK-1_dend": 0.0,
+      "w_Piezo1_soma": 8.166280967191625e-07,
+      "h_mech_Piezo1_soma": 0.0,
+      "w_TREK-1_soma": 6.356170769343493e-07,
+      "h_mech_TREK-1_soma": 0.0,
+      "w_Piezo1_ais": 8.166280967191625e-07,
+      "h_mech_Piezo1_ais": 0.0,
+      "w_TREK-1_ais": 6.356170769343493e-07,
+      "h_mech_TREK-1_ais": 0.0
+     }
+    },
+    "Ca_uM_max_abs": {
+     "dend": 1.5134401708550023,
+     "soma": 0.3516100254241527,
+     "ais": 0.0
+    }
+   },
+   "state_burst3_start_vs_rest": {
+    "V_mV": {
+     "dend": {
+      "max": 0.0023947506288521936,
+      "median": 0.0021899513118484037
+     },
+     "soma": {
+      "max": 0.002233629912339552,
+      "median": 0.002038262697112714
+     },
+     "ais": {
+      "max": 0.002233501415659589,
+      "median": 0.0020381459250273792
+     }
+    },
+    "HH_gate_max_abs": {
+     "max": 1.4684450556370042e-06,
+     "m": 3.887814493031992e-07,
+     "h": 7.390435907694837e-08,
+     "n": 1.4684450556370042e-06
+    },
+    "mechano_gate_max_abs": {
+     "max": 8.166280967191625e-07,
+     "w_max": 8.166280967191625e-07,
+     "h_mech_max": 0.0,
+     "per_channel_compartment": {
+      "w_Piezo1_dend": 8.166280967191625e-07,
+      "h_mech_Piezo1_dend": 0.0,
+      "w_TREK-1_dend": 6.356170769343493e-07,
+      "h_mech_TREK-1_dend": 0.0,
+      "w_Piezo1_soma": 8.166280967191625e-07,
+      "h_mech_Piezo1_soma": 0.0,
+      "w_TREK-1_soma": 6.356170769343493e-07,
+      "h_mech_TREK-1_soma": 0.0,
+      "w_Piezo1_ais": 8.166280967191625e-07,
+      "h_mech_Piezo1_ais": 0.0,
+      "w_TREK-1_ais": 6.356170769343493e-07,
+      "h_mech_TREK-1_ais": 0.0
+     }
+    },
+    "Ca_uM_max_abs": {
+     "dend": 1.5411592561851388,
+     "soma": 0.3580498839324102,
+     "ais": 0.0
+    }
+   },
+   "Ca_rest_uM": 0.05,
+   "Ca_residue_burst2_start_over_burst1_peak_excess": {
+    "all_voxels": {
+     "dend": {
+      "median": 0.03519716690979077,
+      "max": 0.051812851797598765,
+      "n": 4531
+     },
+     "soma": {
+      "median": 0.03507278190072394,
+      "max": 0.05124576662519886,
+      "n": 4531
+     },
+     "ais": {
+      "median": null,
+      "max": null,
+      "n": 0
+     }
+    },
+    "canonical_firing": {
+     "dend": {
+      "median": 0.03518891110362248,
+      "max": 0.051812851797598765,
+      "n": 3531
+     },
+     "soma": {
+      "median": 0.03497649394096528,
+      "max": 0.05124576662519886,
+      "n": 3531
+     },
+     "ais": {
+      "median": null,
+      "max": null,
+      "n": 0
+     }
+    },
+    "note": "(Ca(burst-2 start) - Ca_rest) / (burst-1 period Ca peak - Ca_rest); AIS has no Ca influx (no Piezo1 there), so its ratio is undefined"
+   },
+   "burst1_ca_peak_uM_median_firing": {
+    "dend": 11.895044166420831,
+    "soma": 2.7511441497672298,
+    "ais": 0.05
+   },
+   "periodic": {
+    "last_two_bursts_identical": true,
+    "first_burst_identical_to_all_later_exact": 2,
+    "first_burst_identical_to_all_later_within_one_step": 1,
+    "note": "burst index (1-based); 1 = burst 1 already periodic; None = not periodic within n_periods_run"
+   }
+  },
+  "S4": {
+   "n_periods_run": 7,
+   "wall_s": 199.90105774300173,
+   "channels": [
+    "Piezo1",
+    "TREK-1"
+   ],
+   "on_spikes_per_burst": [
+    10274,
+    10178,
+    10175,
+    10175,
+    10175,
+    10175,
+    10175
+   ],
+   "on_spikes_per_burst_canonical_firing": [
+    10274,
+    10178,
+    10175,
+    10175,
+    10175,
+    10175,
+    10175
+   ],
+   "on_spikes_per_burst_silent_set": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "on_firing_voxels_per_burst": [
+    3180,
+    3144,
+    3144,
+    3144,
+    3144,
+    3144,
+    3144
+   ],
+   "off_window_spikes_per_period": [
+    5316,
+    5298,
+    5303,
+    5303,
+    5303,
+    5303,
+    5303
+   ],
+   "burst2_vs_burst1": {
+    "frac_exact": 0.2981681747958508,
+    "frac_within_one_step": 0.2981681747958508,
+    "frac_same_count": 0.9788126241447804,
+    "n_not_exact": 3180,
+    "n_count_differs": 96,
+    "max_shift_ms_same_count": 2.48
+   },
+   "burst3_vs_burst1": {
+    "frac_exact": 0.2981681747958508,
+    "frac_within_one_step": 0.2981681747958508,
+    "frac_same_count": 0.9781505186493048,
+    "n_not_exact": 3180,
+    "n_count_differs": 99,
+    "max_shift_ms_same_count": 2.729
+   },
+   "burst3_vs_burst2": {
+    "frac_exact": 0.30611344074155816,
+    "frac_within_one_step": 0.30611344074155816,
+    "frac_same_count": 0.9993378945045244,
+    "n_not_exact": 3144,
+    "n_count_differs": 3,
+    "max_shift_ms_same_count": 0.34400000000000003
+   },
+   "burst4_vs_burst1": {
+    "frac_exact": 0.2981681747958508,
+    "frac_within_one_step": 0.2981681747958508,
+    "frac_same_count": 0.9781505186493048,
+    "n_not_exact": 3180,
+    "n_count_differs": 99,
+    "max_shift_ms_same_count": 2.727
+   },
+   "burst4_vs_burst3": {
+    "frac_exact": 0.8159346722577797,
+    "frac_within_one_step": 0.9995585963363496,
+    "frac_same_count": 1.0,
+    "n_not_exact": 834,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.002
+   },
+   "burst5_vs_burst1": {
+    "frac_exact": 0.2981681747958508,
+    "frac_within_one_step": 0.2981681747958508,
+    "frac_same_count": 0.9781505186493048,
+    "n_not_exact": 3180,
+    "n_count_differs": 99,
+    "max_shift_ms_same_count": 2.727
+   },
+   "burst5_vs_burst4": {
+    "frac_exact": 0.9949238578680203,
+    "frac_within_one_step": 1.0,
+    "frac_same_count": 1.0,
+    "n_not_exact": 23,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.001
+   },
+   "burst6_vs_burst1": {
+    "frac_exact": 0.2981681747958508,
+    "frac_within_one_step": 0.2981681747958508,
+    "frac_same_count": 0.9781505186493048,
+    "n_not_exact": 3180,
+    "n_count_differs": 99,
+    "max_shift_ms_same_count": 2.727
+   },
+   "burst6_vs_burst5": {
+    "frac_exact": 0.9997792981681748,
+    "frac_within_one_step": 1.0,
+    "frac_same_count": 1.0,
+    "n_not_exact": 1,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.001
+   },
+   "burst7_vs_burst1": {
+    "frac_exact": 0.2981681747958508,
+    "frac_within_one_step": 0.2981681747958508,
+    "frac_same_count": 0.9781505186493048,
+    "n_not_exact": 3180,
+    "n_count_differs": 99,
+    "max_shift_ms_same_count": 2.727
+   },
+   "burst7_vs_burst6": {
+    "frac_exact": 1.0,
+    "frac_within_one_step": 1.0,
+    "frac_same_count": 1.0,
+    "n_not_exact": 0,
+    "n_count_differs": 0,
+    "max_shift_ms_same_count": 0.0
+   },
+   "state_burst2_start_vs_rest": {
+    "V_mV": {
+     "dend": {
+      "max": 2.026090051120377,
+      "median": 0.06879709539001055
+     },
+     "soma": {
+      "max": 2.586180161075106,
+      "median": 0.08680197945142254
+     },
+     "ais": {
+      "max": 2.586043284210888,
+      "median": 0.08679753652144484
+     }
+    },
+    "HH_gate_max_abs": {
+     "max": 0.0012964009226419698,
+     "m": 0.0003176026823394516,
+     "h": 6.0115686699280246e-05,
+     "n": 0.0012964009226419698
+    },
+    "mechano_gate_max_abs": {
+     "max": 8.166280967191625e-07,
+     "w_max": 8.166280967191625e-07,
+     "h_mech_max": 5.954114596917748e-07,
+     "per_channel_compartment": {
+      "w_Piezo1_dend": 8.166280967191625e-07,
+      "h_mech_Piezo1_dend": 5.954114596917748e-07,
+      "w_TREK-1_dend": 6.356170769343493e-07,
+      "h_mech_TREK-1_dend": 0.0,
+      "w_Piezo1_soma": 8.166280967191625e-07,
+      "h_mech_Piezo1_soma": 5.954114596917748e-07,
+      "w_TREK-1_soma": 6.356170769343493e-07,
+      "h_mech_TREK-1_soma": 0.0,
+      "w_Piezo1_ais": 8.166280967191625e-07,
+      "h_mech_Piezo1_ais": 5.954114596917748e-07,
+      "w_TREK-1_ais": 6.356170769343493e-07,
+      "h_mech_TREK-1_ais": 0.0
+     }
+    },
+    "Ca_uM_max_abs": {
+     "dend": 0.9355457334028763,
+     "soma": 0.22655559118422985,
+     "ais": 0.0
+    }
+   },
+   "state_burst3_start_vs_rest": {
+    "V_mV": {
+     "dend": {
+      "max": 2.1208441234618647,
+      "median": 0.07232477298298079
+     },
+     "soma": {
+      "max": 2.7134435289873124,
+      "median": 0.09111929799206564
+     },
+     "ais": {
+      "max": 2.713298489171464,
+      "median": 0.09111466028315363
+     }
+    },
+    "HH_gate_max_abs": {
+     "max": 0.001344122449481383,
+     "m": 0.0003288690290823552,
+     "h": 6.208420038378293e-05,
+     "n": 0.001344122449481383
+    },
+    "mechano_gate_max_abs": {
+     "max": 8.166280967191625e-07,
+     "w_max": 8.166280967191625e-07,
+     "h_mech_max": 5.954114933315324e-07,
+     "per_channel_compartment": {
+      "w_Piezo1_dend": 8.166280967191625e-07,
+      "h_mech_Piezo1_dend": 5.954114933315324e-07,
+      "w_TREK-1_dend": 6.356170769343493e-07,
+      "h_mech_TREK-1_dend": 0.0,
+      "w_Piezo1_soma": 8.166280967191625e-07,
+      "h_mech_Piezo1_soma": 5.954114933315324e-07,
+      "w_TREK-1_soma": 6.356170769343493e-07,
+      "h_mech_TREK-1_soma": 0.0,
+      "w_Piezo1_ais": 8.166280967191625e-07,
+      "h_mech_Piezo1_ais": 5.954114933315324e-07,
+      "w_TREK-1_ais": 6.356170769343493e-07,
+      "h_mech_TREK-1_ais": 0.0
+     }
+    },
+    "Ca_uM_max_abs": {
+     "dend": 0.9537056802199653,
+     "soma": 0.23124960117393067,
+     "ais": 0.0
+    }
+   },
+   "Ca_rest_uM": 0.05,
+   "Ca_residue_burst2_start_over_burst1_peak_excess": {
+    "all_voxels": {
+     "dend": {
+      "median": 0.03529587322979462,
+      "max": 0.05462078725016644,
+      "n": 4531
+     },
+     "soma": {
+      "median": 0.03523212207102861,
+      "max": 0.054583251894946845,
+      "n": 4531
+     },
+     "ais": {
+      "median": null,
+      "max": null,
+      "n": 0
+     }
+    },
+    "canonical_firing": {
+     "dend": {
+      "median": 0.03525553438647594,
+      "max": 0.05462078725016644,
+      "n": 3531
+     },
+     "soma": {
+      "median": 0.035107073222408205,
+      "max": 0.054583251894946845,
+      "n": 3531
+     },
+     "ais": {
+      "median": null,
+      "max": null,
+      "n": 0
+     }
+    },
+    "note": "(Ca(burst-2 start) - Ca_rest) / (burst-1 period Ca peak - Ca_rest); AIS has no Ca influx (no Piezo1 there), so its ratio is undefined"
+   },
+   "burst1_ca_peak_uM_median_firing": {
+    "dend": 11.808572317146998,
+    "soma": 2.8622368922138466,
+    "ais": 0.05
+   },
+   "periodic": {
+    "last_two_bursts_identical": true,
+    "first_burst_identical_to_all_later_exact": 6,
+    "first_burst_identical_to_all_later_within_one_step": 4,
+    "note": "burst index (1-based); 1 = burst 1 already periodic; None = not periodic within n_periods_run"
+   }
+  }
+ },
+ "wall_s_total": 265.89201779896393
+}

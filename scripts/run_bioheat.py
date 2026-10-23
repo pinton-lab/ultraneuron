@@ -14,10 +14,19 @@ writes) and produces the thermal artefacts the validation report needs:
 
 Heat-source convention: Q = 2 alpha I, with the same silence x cw pulse
 normalisation that acoustic_outputs uses to convert the saved <p^2>
-window into CW-equivalent ISPPA.  The session-level theta-burst schedule
-is collapsed into Q_eff = duty_session * Q_cw applied continuously over
-n_groups * group_period_s — the right long-time-scale behaviour given
-that conduction smears each burst far beyond a single group.
+window into CW-equivalent ISPPA.
+
+Time integration (default, ``--burst-resolved``): the actual stimulation
+protocol is integrated burst by burst -- Q = Q_cw * duty_in_burst during
+each ON window (group_on_s) and Q = 0 during the OFF remainder of each
+group period, for n_groups groups.  The explicit step is dt_on inside the
+ON window and dt_off in the OFF window (both far below the stability
+limit), so the within-burst temperature excursion is resolved.  The focal
+and spatial-peak temperature are recorded at every step
+(focus_trace_*.npy / peak_trace_*.npy); full frames are captured at the
+end of the ON window every ``frame_every_groups`` groups for CEM43 and
+the report figures.  ``--duty-averaged`` restores the earlier collapsed
+source Q_eff = duty_session * Q_cw applied continuously.
 
 Usage:
     python run_bioheat.py --config <path-to-validation-config.py>
@@ -152,6 +161,16 @@ def main() -> None:
     ap.add_argument("--t-max-s", type=float, default=None,
                     help="Cap simulated session duration (s); "
                          "defaults to min(session_duration_s, 80)")
+    ap.add_argument("--duty-averaged", action="store_true",
+                    help="Collapse the protocol into a continuous duty-averaged source "
+                         "(pre-revision behaviour). Default: integrate the burst schedule.")
+    ap.add_argument("--dt-on-s", type=float, default=2e-3,
+                    help="Explicit time step inside each ON window [s] (default 2 ms).")
+    ap.add_argument("--dt-off-s", type=float, default=20e-3,
+                    help="Explicit time step inside each OFF window [s] (default 20 ms).")
+    ap.add_argument("--frame-every-groups", type=int, default=10,
+                    help="Capture a full temperature frame at the end of the ON window "
+                         "every N groups (default 10 -> every 2 s for a 200 ms period).")
     ap.add_argument("--absorption-fraction-skull", type=float, default=None,
                     help="Fraction of attenuated acoustic energy in skull "
                          "that is converted to heat (Pinton 2012). "
@@ -207,42 +226,96 @@ def main() -> None:
     print(f"  t_total = {t_total:.1f} s, dt_heat = {dt_heat:.3f} s, "
           f"n_steps ~= {int(t_total / dt_heat)}", flush=True)
 
-    u0 = np.zeros_like(run["c"])
-    result = pennes_solve(
-        u0=u0, q=q_eff, k_map=tm["k"], c_map=tm["c"], rho_map=tm["rho"],
-        wb_map=tm["wb"], dx=dx, dy=dy, dz=dz, dt=dt_heat,
-        t_max=t_total, capture_every=capture_every,
-    )
+    # Focus voxel (peak <p^2> in brain) is needed before the solve for the trace.
+    skull = run["c"] > 1600.0
+    pmap = np.asarray(run["pmap"])
+    p2_mean = (pmap.astype(np.float64) ** 2).mean(axis=0)
+    p2_brain = np.where(skull, -np.inf, p2_mean)
+    focus_idx = (np.unravel_index(int(np.argmax(p2_brain)), p2_brain.shape)
+                 if np.isfinite(p2_brain).any() else tuple(x // 2 for x in run["c"].shape))
 
-    delta_T_final = result.temperature
-    frames = result.frames
-    frame_times = getattr(result, "times", None)
-    if frame_times is None:
-        frame_times = getattr(result, "frame_times", None)
-    if frames is not None and frame_times is not None:
-        history_t = np.asarray(frame_times, dtype=np.float64)
-        history_peak = frames.max(axis=(0, 1, 2)).astype(np.float32)
+    u0 = np.zeros_like(run["c"])
+    burst_resolved = not args.duty_averaged
+    if burst_resolved:
+        # ---- integrate the actual ON/OFF protocol -------------------------------
+        dt_on = min(float(args.dt_on_s), dt_heat, group_on_s)
+        t_off_s = max(group_period_s - group_on_s, 0.0)
+        dt_off = min(float(args.dt_off_s), dt_heat, t_off_s) if t_off_s > 0 else 0.0
+        q_on = q_cw * duty_in_burst
+        q_zero = np.zeros_like(q_cw)
+        trace_t: list[float] = []; trace_focus: list[float] = []; trace_peak: list[float] = []
+        frames_l: list[np.ndarray] = []; frame_times_l: list[float] = []
+        state = {"t0": 0.0}
+
+        def _rec(step: int, t: float, T: np.ndarray) -> None:
+            trace_t.append(state["t0"] + t)
+            trace_focus.append(float(T[focus_idx]))
+            trace_peak.append(float(T.max()))
+
+        print(f"  burst-resolved: {n_groups} groups x ({group_on_s*1e3:.0f} ms ON @ dt={dt_on*1e3:.1f} ms"
+              f" + {t_off_s*1e3:.0f} ms OFF @ dt={dt_off*1e3:.1f} ms); "
+              f"~{n_groups*(int(np.ceil(group_on_s/dt_on)) + (int(np.ceil(t_off_s/dt_off)) if dt_off else 0))} steps",
+              flush=True)
+        T_cur = u0
+        T_end_of_last_on = None
+        for g in range(n_groups):
+            r_on = pennes_solve(u0=T_cur, q=q_on, k_map=tm["k"], c_map=tm["c"], rho_map=tm["rho"],
+                                wb_map=tm["wb"], dx=dx, dy=dy, dz=dz, dt=dt_on, t_max=group_on_s,
+                                capture_every=0.0, callback=_rec)
+            T_cur = r_on.temperature; state["t0"] += group_on_s
+            if (g % max(int(args.frame_every_groups), 1) == 0) or g == n_groups - 1:
+                frames_l.append(T_cur.astype(np.float32).copy()); frame_times_l.append(state["t0"])
+            if g == n_groups - 1:
+                T_end_of_last_on = T_cur.copy()
+            if t_off_s > 0:
+                r_off = pennes_solve(u0=T_cur, q=q_zero, k_map=tm["k"], c_map=tm["c"], rho_map=tm["rho"],
+                                     wb_map=tm["wb"], dx=dx, dy=dy, dz=dz, dt=dt_off, t_max=t_off_s,
+                                     capture_every=0.0, callback=_rec)
+                T_cur = r_off.temperature; state["t0"] += t_off_s
+            if (g + 1) % max(n_groups // 8, 1) == 0:
+                print(f"    group {g+1}/{n_groups}  t={state['t0']:.1f} s  "
+                      f"dT_focus={trace_focus[-1]*1e3:.1f} mK  dT_peak={trace_peak[-1]*1e3:.1f} mK", flush=True)
+        delta_T_final = T_cur
+        frames = np.stack(frames_l, axis=-1)                 # (nx, ny, nz, n_t) like pennes frames
+        frame_times = np.asarray(frame_times_l, dtype=np.float64)
+        history_t = np.asarray(trace_t, dtype=np.float64)
+        history_peak = np.asarray(trace_peak, dtype=np.float32)
+        focus_trace = np.asarray(trace_focus, dtype=np.float32)
+        # within-burst excursion at the focus over the last group period
+        last = history_t >= (t_total - group_period_s - 1e-9)
+        ripple_focus = float(focus_trace[last].max() - focus_trace[last].min()) if last.any() else float("nan")
+        ripple_peak = float(history_peak[last].max() - history_peak[last].min()) if last.any() else float("nan")
+        dT_focus_end_on = float(T_end_of_last_on[focus_idx]) if T_end_of_last_on is not None else float("nan")
+        dT_peak_end_on = float(T_end_of_last_on.max()) if T_end_of_last_on is not None else float("nan")
     else:
-        history_t = np.array([0.0, t_total], dtype=np.float64)
-        history_peak = np.array([0.0, float(delta_T_final.max())], dtype=np.float32)
-        frames = None
-        frame_times = None
+        # ---- collapsed duty-averaged source (pre-revision behaviour) ----------
+        result = pennes_solve(
+            u0=u0, q=q_eff, k_map=tm["k"], c_map=tm["c"], rho_map=tm["rho"],
+            wb_map=tm["wb"], dx=dx, dy=dy, dz=dz, dt=dt_heat,
+            t_max=t_total, capture_every=capture_every,
+        )
+        delta_T_final = result.temperature
+        frames = result.frames
+        frame_times = getattr(result, "times", None)
+        if frame_times is None:
+            frame_times = getattr(result, "frame_times", None)
+        if frames is not None and frame_times is not None:
+            history_t = np.asarray(frame_times, dtype=np.float64)
+            history_peak = frames.max(axis=(0, 1, 2)).astype(np.float32)
+        else:
+            history_t = np.array([0.0, t_total], dtype=np.float64)
+            history_peak = np.array([0.0, float(delta_T_final.max())], dtype=np.float32)
+            frames = None
+            frame_times = None
+        focus_trace = None
+        ripple_focus = ripple_peak = dT_focus_end_on = dT_peak_end_on = float("nan")
 
     peak_idx = np.unravel_index(int(np.argmax(delta_T_final)), delta_T_final.shape)
-    skull = run["c"] > 1600.0
     if (~skull).any():
         brain_dT = np.where(skull, -np.inf, delta_T_final)
         brain_peak_idx = np.unravel_index(int(np.argmax(brain_dT)), brain_dT.shape)
     else:
         brain_peak_idx = peak_idx
-    pmap = np.asarray(run["pmap"])
-    p2_mean = (pmap.astype(np.float64) ** 2).mean(axis=0)
-    p2_brain = np.where(skull, -np.inf, p2_mean)
-    if np.isfinite(p2_brain).any():
-        focus_idx = np.unravel_index(int(np.argmax(p2_brain)), p2_brain.shape)
-    else:
-        focus_idx = peak_idx
-
     if frames is not None and frame_times is not None:
         cem43 = _cem43_from_frames(frames, np.asarray(frame_times, dtype=np.float64))
     else:
@@ -258,6 +331,13 @@ def main() -> None:
         "peak_dT_history_K": float(history_peak.max()),
         "dT_focus_K": float(delta_T_final[focus_idx]),
         "dT_per_burst_K": dT_per_burst_peak,
+        "burst_resolved": bool(burst_resolved),
+        "dt_on_s": (float(dt_on) if burst_resolved else None),
+        "dt_off_s": (float(dt_off) if burst_resolved else None),
+        "dT_focus_end_of_last_on_K": dT_focus_end_on,
+        "dT_peak_end_of_last_on_K": dT_peak_end_on,
+        "dT_focus_within_burst_ripple_K": ripple_focus,
+        "dT_peak_within_burst_ripple_K": ripple_peak,
         "cem43_peak_min": float(cem43.max()),
         "dT_brain_peak_K": (float(delta_T_final[~skull].max())
                             if (~skull).any() else 0.0),
@@ -283,6 +363,10 @@ def main() -> None:
     np.save(out_dir / "delta_T_history_t.npy", history_t)
     np.save(out_dir / "delta_T_history_peak.npy", history_peak)
     np.save(out_dir / "cem43.npy", cem43.astype(np.float32))
+    if focus_trace is not None:
+        np.save(out_dir / "focus_trace_t.npy", history_t)
+        np.save(out_dir / "focus_trace_dT.npy", focus_trace)
+        np.save(out_dir / "peak_trace_dT.npy", history_peak)
     (out_dir / "thermal_indices.json").write_text(json.dumps({
         "peak_idx": [int(i) for i in peak_idx],
         "brain_peak_idx": [int(i) for i in brain_peak_idx],

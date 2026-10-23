@@ -96,3 +96,13 @@ data/tr_microct/
 # Rendered validation-report PDFs (tens of MB each; regenerate from the report
 # builders or host on Zenodo). Figure PDFs under figures/ stay tracked.
 data/*/validation_report/validation_report_*.pdf
+
+# Manuscript outputs (figures and LaTeX tables written by scripts/ for the paper).
+# The manuscript is kept separate from the public code.
+/figures/
+/supplementary_figures/
+/data/*.tex
+/data/*/calcium/*.tex
+/data/*/pre_*/
+*.md
+!/README.md

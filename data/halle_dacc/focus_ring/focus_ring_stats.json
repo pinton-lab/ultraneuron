@@ -1,0 +1,18 @@
+{
+ "n_fire_S2": 3531,
+ "n_fire_S4": 3180,
+ "spikes_S2": 12250,
+ "spikes_S4": 10274,
+ "n_core_voxels": 248,
+ "n_core_fire_S2": 248,
+ "n_core_fire_S4": 248,
+ "n_shell_fire_S2": 3283,
+ "n_shell_fire_S4": 2932,
+ "n_silenced_by_inact": 351,
+ "n_new_under_inact": 0,
+ "T_peak_mNm": 5.781622886657715,
+ "voxel_mm3": 1.8699591679999998,
+ "frac_core_silenced": 0.0,
+ "frac_shell_retained": 0.8930855924459336,
+ "frac_fire_change": -0.0994052676295667
+}

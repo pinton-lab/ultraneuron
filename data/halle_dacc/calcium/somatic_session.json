@@ -1,0 +1,130 @@
+{
+ "description": "Slow somatic Ca pool over the 400-burst Yaakub theta-burst session; one simulated burst (rest start) repeated, exact because every burst starts from rest (run_burst_periodicity.py)",
+ "model": {
+  "Ca_rest_uM": 0.05,
+  "tau_ms": 700.0,
+  "dCa_per_spike_uM": 0.08,
+  "Ca_max_uM": 10.0
+ },
+ "protocol": {
+  "burst_ms": 20.0,
+  "period_ms": 200.0,
+  "n_bursts": 400,
+  "session_ms": 80000.0
+ },
+ "n_fire": 3531,
+ "n_spikes_burst": 12250,
+ "spikes_per_voxel_burst": {
+  "mean": 3.469272160860946,
+  "max": 5,
+  "min": 1
+ },
+ "plateau_uM": {
+  "median": 1.1700000000000002,
+  "min": 0.33,
+  "max": 1.45,
+  "p05": 0.33,
+  "p95": 1.45
+ },
+ "peak_uM": {
+  "median": 1.3254376029094213,
+  "min": 0.37190217541866194,
+  "max": 1.6435338656674348,
+  "p05": 0.37190217541866194,
+  "p95": 1.6434998483792556
+ },
+ "ca_end_uM": {
+  "median": 1.0327144520140785,
+  "min": 0.2952264285529567,
+  "max": 1.2805504558008485,
+  "p05": 0.29587222297792426,
+  "p95": 1.2793023133599895
+ },
+ "t_return_10pct_s": {
+  "median": 3.6966164754830824,
+  "min": 2.724920848634443,
+  "max": 3.85404527260497,
+  "p05": 2.7267618487145517,
+  "p95": 3.8533349050620966
+ },
+ "by_spikes_per_burst": {
+  "1": {
+   "n_vox": 626,
+   "plateau_uM": 0.33,
+   "peak_median_uM": 0.37190217541866194,
+   "analytic_plateau_uM": 0.33
+  },
+  "2": {
+   "n_vox": 554,
+   "plateau_uM": 0.6100000000000001,
+   "peak_median_uM": 0.6899116789892126,
+   "analytic_plateau_uM": 0.6100000000000001
+  },
+  "3": {
+   "n_vox": 414,
+   "plateau_uM": 0.89,
+   "peak_median_uM": 1.0078464645161227,
+   "analytic_plateau_uM": 0.89
+  },
+  "4": {
+   "n_vox": 411,
+   "plateau_uM": 1.1700000000000002,
+   "peak_median_uM": 1.3256501367022062,
+   "analytic_plateau_uM": 1.1700000000000002
+  },
+  "5": {
+   "n_vox": 1526,
+   "plateau_uM": 1.45,
+   "peak_median_uM": 1.6428286408265538,
+   "analytic_plateau_uM": 1.45
+  }
+ },
+ "focal_voxel": [
+  54,
+  32,
+  30
+ ],
+ "focal_spikes_per_burst": 5,
+ "focal_T_peak_mNm": 5.781622886657715,
+ "focal_peak_uM": 1.6421638023670202,
+ "focal_plateau_uM": 1.45,
+ "focal_t_return_s": 3.8531219369802856,
+ "method_trace": "analytic",
+ "analytic_vs_direct_max_abs": {
+  "peak": 2.6645352591003757e-15,
+  "plateau": 1.3322676295501878e-15,
+  "ca_end": 2.220446049250313e-15,
+  "t_return_ms": 1.4551915228366852e-11,
+  "trace_tail_max_abs_uM": 1.1920928955078125e-07
+ },
+ "wall_s": {
+  "analytic": 3.460689067840576,
+  "direct_summaries": 1.0279536247253418
+ },
+ "definitions": {
+  "plateau": "exact time-mean of [Ca] over the last burst period [79.8, 80.0] s",
+  "peak": "exact maximum over the session (just after a spike)",
+  "t_return": "time after session end (80 s) at which [Ca]-Ca_rest <= 0.1*Ca_rest"
+ },
+ "source_spikes": "data/halle_dacc/neural_results.npz",
+ "sim_git_sha": "b141c0a",
+ "git_sha": "b141c0a",
+ "gvmp_comparison": {
+  "gvmp_late_mean_median_uM": 1.1708001904761687,
+  "gvmp_late_mean_range_uM": [
+   0.3302000476190313,
+   1.731200285714218
+  ],
+  "gvmp_peak_median_uM": 1.3252881663667586,
+  "gvmp_peak_max_uM": 1.9568108956048382,
+  "gvmp_focal_voxel": [
+   54,
+   32,
+   30
+  ],
+  "gvmp_slow_peak_focal_uM": 1.6412731374259548,
+  "gvmp_late_window": "60-80 s grid mean (1 ms Euler-type grid)"
+ },
+ "mechano_init": "rest",
+ "maps_3d": "plateau_map_uM, peak_map_uM, ca_end_map_uM, t_return_map_s (NaN outside firing set)"
+}

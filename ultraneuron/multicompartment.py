@@ -26,7 +26,7 @@ import numpy as np
 
 from .calcium import CalciumDynamics, KCaChannel
 from .compartments import CompartmentalGeometry, cortical_pyramidal_3comp
-from .neuron import MechanoHHNeuron
+from .neuron import MECHANO_INIT_MODES, MechanoHHNeuron, _check_mechano_init
 from .nice import NICEModel
 from .thermosensors import TRPThermosensorChannel
 
@@ -261,6 +261,44 @@ try:
                 dn0, dn1, dn2,
                 dCa0, dCa1, dCa2)
 
+    @njit(cache=True, fastmath=True)
+    def _sigmoid_safe_scalar(x: float) -> float:
+        """Scalar mirror of the vectorised ``_safe_sigmoid`` (= 1/(1+e^x))."""
+        if x >= 0.0:
+            e = np.exp(-min(x, 500.0))
+            return e / (1.0 + e)
+        return 1.0 / (1.0 + np.exp(max(x, -500.0)))
+
+    @njit(cache=True, fastmath=True)
+    def _mech_kinetics_scalar(
+        T: float, k: int,
+        ch_T_half: np.ndarray, ch_dA: np.ndarray,
+        ch_tau_act_inv: np.ndarray, ch_tau0: np.ndarray,
+        ch_inact_on: np.ndarray, ch_hT_half: np.ndarray,
+        ch_hdA: np.ndarray, ch_htau_inv: np.ndarray,
+        kT: float,
+    ):
+        """(w_inf, 1/tau_w, h_inf, 1/tau_h) of channel ``k`` at tension T.
+
+        Mirrors ``MulticompartmentMechanoHHNeuron._channel_kinetics`` and
+        ``_inactivation_kinetics`` (scalar form). ``ch_tau_act_inv[k] > 0``
+        selects the fixed Phase-5 activation time constant; otherwise the
+        bell-shaped ``tau_0 / (4 w (1-w) + 0.01)`` law. Non-inactivating
+        channels (``ch_inact_on[k] == 0``) return h_inf = 1, rate 0.
+        """
+        w_inf = _sigmoid_safe_scalar(-ch_dA[k] * (T - ch_T_half[k]) / kT)
+        if ch_tau_act_inv[k] > 0.0:
+            tau_inv = ch_tau_act_inv[k]
+        else:
+            tau_inv = (4.0 * w_inf * (1.0 - w_inf) + 0.01) / ch_tau0[k]
+        if ch_inact_on[k] != 0.0:
+            h_inf = _sigmoid_safe_scalar(ch_hdA[k] * (T - ch_hT_half[k]) / kT)
+            h_tau_inv = ch_htau_inv[k]
+        else:
+            h_inf = 1.0
+            h_tau_inv = 0.0
+        return w_inf, tau_inv, h_inf, h_tau_inv
+
     @njit(parallel=True, cache=True, fastmath=True)
     def _rk4_batch_numba_3comp(
         # Per-voxel mechano state (steady-state w from tension)
@@ -321,11 +359,54 @@ try:
         # disable recording (existing behaviour).
         spike_step_buf: np.ndarray,    # (N, max_spikes) int32
         max_spikes: int,
+        # ---- Time-varying tension drive (optional) --------------------
+        # T(t) = T_peak[idx] · drive[step]; drive is shared by all voxels
+        # and held constant within each RK4 step (as in ``simulate``).
+        # len(drive) == 0 → constant tension (the precomputed per-voxel
+        # w_inf/tau/h arrays above are used throughout). Steps with
+        # drive == 1.0 always use the precomputed arrays, so the ON
+        # segment is bit-identical to the constant-tension path.
+        drive: np.ndarray,             # (n_drive,) float64, n_drive ∈ {0, n_steps}
+        T_peak_per_vox: np.ndarray,    # (N,) [mN/m]
+        ch_T_half: np.ndarray,         # (n_ch,)
+        ch_dA: np.ndarray,             # (n_ch,)
+        ch_tau_act_inv: np.ndarray,    # (n_ch,) >0 → fixed tau_act
+        ch_tau0: np.ndarray,           # (n_ch,)
+        ch_inact_on: np.ndarray,       # (n_ch,) 1.0 if inactivating
+        ch_hT_half: np.ndarray,        # (n_ch,)
+        ch_hdA: np.ndarray,            # (n_ch,)
+        ch_htau_inv: np.ndarray,       # (n_ch,)
+        kT: float,
+        # ---- State carry-over (optional) ------------------------------
+        # Layout per voxel (see ``state_layout``): V[3], m[3], h[3], n[3],
+        # w[3*n_ch], h_mech[3*n_ch], Ca[3]. Shape (N, n_state) enables;
+        # a (1, 1) dummy disables.
+        init_state: np.ndarray,        # (N, n_state) or (1, 1)
+        final_state: np.ndarray,       # (N, n_state) or (1, 1) — output
+        # ---- Ca readouts (optional) -----------------------------------
+        ca_peak: np.ndarray,           # (N, 3) or (1, 1) — output, running max
+        ca_trace: np.ndarray,          # (N, 3, n_tr) float32 or (1, 1, 1)
+        ca_decim: int,                 # record every ca_decim steps; 0 = off
+        # ---- Mechano-gate initial condition ---------------------------
+        # mech_init_rest != 0 → w, h_mech start at the zero-tension steady
+        # state given per channel in w_init_ch / hm_init_ch (true rest;
+        # the default). 0 → steady state for the step-0 tension (legacy
+        # 'peak_steady'). An enabled init_state overrides both.
+        mech_init_rest: int,
+        w_init_ch: np.ndarray,         # (n_ch,)
+        hm_init_ch: np.ndarray,        # (n_ch,)
     ) -> np.ndarray:
         N = w_inf_per_vox.shape[1]
         n_ch = w_inf_per_vox.shape[0]
         n_kca = kca_g.shape[0]
         n_trp = trp_g_Po.shape[0]
+        n_state = 15 + 6 * n_ch
+        n_drive = drive.shape[0]
+        use_init = init_state.shape[0] == N and init_state.shape[1] == n_state
+        write_final = final_state.shape[0] == N and final_state.shape[1] == n_state
+        write_peak = ca_peak.shape[0] == N and ca_peak.shape[1] == 3
+        n_tr = ca_trace.shape[2]
+        write_trace = ca_decim > 0 and ca_trace.shape[0] == N
         spike_counts = np.zeros(N, dtype=np.int32)
 
         I0 = I_stim[0]
@@ -344,7 +425,7 @@ try:
             Cm1 = C_eff_per_vox[1, idx]
             Cm2 = C_eff_per_vox[2, idx]
 
-            # Per-voxel constants for this idx
+            # Per-voxel constants for this idx (peak-tension kinetics)
             w_inf_local = np.empty(n_ch)
             tau_inv_local = np.empty(n_ch)
             h_inf_local = np.empty(n_ch)
@@ -354,16 +435,58 @@ try:
                 tau_inv_local[k] = tau_inv_per_vox[k, idx]
                 h_inf_local[k] = h_inf_per_vox[k, idx]
                 h_tau_inv_local[k] = h_tau_inv_per_vox[k, idx]
+            # Kinetics in force for the current step
+            w_inf_now = np.empty(n_ch)
+            tau_inv_now = np.empty(n_ch)
+            h_inf_now = np.empty(n_ch)
+            h_tau_inv_now = np.empty(n_ch)
+            T_pk = T_peak_per_vox[idx] if n_drive > 0 else 0.0
+            f_prev = 1.0
+            if n_drive > 0:
+                f_prev = drive[0]
+            for k in range(n_ch):
+                if f_prev == 1.0:
+                    w_inf_now[k] = w_inf_local[k]
+                    tau_inv_now[k] = tau_inv_local[k]
+                    h_inf_now[k] = h_inf_local[k]
+                    h_tau_inv_now[k] = h_tau_inv_local[k]
+                else:
+                    wi_, ti_, hi_, hti_ = _mech_kinetics_scalar(
+                        T_pk * f_prev, k, ch_T_half, ch_dA, ch_tau_act_inv,
+                        ch_tau0, ch_inact_on, ch_hT_half, ch_hdA,
+                        ch_htau_inv, kT,
+                    )
+                    w_inf_now[k] = wi_; tau_inv_now[k] = ti_
+                    h_inf_now[k] = hi_; h_tau_inv_now[k] = hti_
 
-            # Mechano gates: shared steady state across compartments at t=0
+            # Mechano gates (shared across compartments at t=0): zero-tension
+            # steady state when mech_init_rest (true rest, default), else
+            # steady state for the step-0 tension (legacy 'peak_steady').
             w = np.empty(3 * n_ch)
-            # Inactivation gate starts at h_inf (steady state for tensions[t=0])
             h_mech = np.empty(3 * n_ch)
             for c in range(3):
                 for k in range(n_ch):
                     j = c * n_ch + k
-                    w[j] = w_inf_local[k]
-                    h_mech[j] = h_inf_local[k]
+                    if mech_init_rest != 0:
+                        w[j] = w_init_ch[k]
+                        h_mech[j] = hm_init_ch[k]
+                    else:
+                        w[j] = w_inf_now[k]
+                        h_mech[j] = h_inf_now[k]
+
+            if use_init:
+                V0 = init_state[idx, 0]; V1 = init_state[idx, 1]; V2 = init_state[idx, 2]
+                m0 = init_state[idx, 3]; m1 = init_state[idx, 4]; m2 = init_state[idx, 5]
+                h0 = init_state[idx, 6]; h1 = init_state[idx, 7]; h2 = init_state[idx, 8]
+                n0 = init_state[idx, 9]; n1 = init_state[idx, 10]; n2 = init_state[idx, 11]
+                for j in range(3 * n_ch):
+                    w[j] = init_state[idx, 12 + j]
+                    h_mech[j] = init_state[idx, 12 + 3 * n_ch + j]
+                Ca_a = init_state[idx, 12 + 6 * n_ch]
+                Ca_b = init_state[idx, 13 + 6 * n_ch]
+                Ca_c = init_state[idx, 14 + 6 * n_ch]
+
+            pk_a = Ca_a; pk_b = Ca_b; pk_c = Ca_c
 
             # Scratch buffers for RK4 stages on w and h_mech
             k1w = np.empty(3 * n_ch)
@@ -387,6 +510,26 @@ try:
                 else:
                     V_prev = V2
                 V1_prev = V_prev
+
+                # Time-varying drive: refresh kinetics when the factor changes
+                if n_drive > 0:
+                    f_now = drive[_step]
+                    if f_now != f_prev:
+                        for k in range(n_ch):
+                            if f_now == 1.0:
+                                w_inf_now[k] = w_inf_local[k]
+                                tau_inv_now[k] = tau_inv_local[k]
+                                h_inf_now[k] = h_inf_local[k]
+                                h_tau_inv_now[k] = h_tau_inv_local[k]
+                            else:
+                                wi_, ti_, hi_, hti_ = _mech_kinetics_scalar(
+                                    T_pk * f_now, k, ch_T_half, ch_dA,
+                                    ch_tau_act_inv, ch_tau0, ch_inact_on,
+                                    ch_hT_half, ch_hdA, ch_htau_inv, kT,
+                                )
+                                w_inf_now[k] = wi_; tau_inv_now[k] = ti_
+                                h_inf_now[k] = hi_; h_tau_inv_now[k] = hti_
+                        f_prev = f_now
 
                 # ---- k1 ----
                 (k1V0, k1V1, k1V2,
@@ -414,8 +557,8 @@ try:
                 for j in range(3 * n_ch):
                     c_idx = j // n_ch
                     k_idx = j - c_idx * n_ch
-                    k1w[j] = (w_inf_local[k_idx] - w[j]) * tau_inv_local[k_idx]
-                    k1hm[j] = (h_inf_local[k_idx] - h_mech[j]) * h_tau_inv_local[k_idx]
+                    k1w[j] = (w_inf_now[k_idx] - w[j]) * tau_inv_now[k_idx]
+                    k1hm[j] = (h_inf_now[k_idx] - h_mech[j]) * h_tau_inv_now[k_idx]
 
                 # ---- k2 ----
                 for j in range(3 * n_ch):
@@ -459,8 +602,8 @@ try:
                 for j in range(3 * n_ch):
                     c_idx = j // n_ch
                     k_idx = j - c_idx * n_ch
-                    k2w[j] = (w_inf_local[k_idx] - w_tmp[j]) * tau_inv_local[k_idx]
-                    k2hm[j] = (h_inf_local[k_idx] - hm_tmp[j]) * h_tau_inv_local[k_idx]
+                    k2w[j] = (w_inf_now[k_idx] - w_tmp[j]) * tau_inv_now[k_idx]
+                    k2hm[j] = (h_inf_now[k_idx] - hm_tmp[j]) * h_tau_inv_now[k_idx]
 
                 # ---- k3 ----
                 for j in range(3 * n_ch):
@@ -504,8 +647,8 @@ try:
                 for j in range(3 * n_ch):
                     c_idx = j // n_ch
                     k_idx = j - c_idx * n_ch
-                    k3w[j] = (w_inf_local[k_idx] - w_tmp[j]) * tau_inv_local[k_idx]
-                    k3hm[j] = (h_inf_local[k_idx] - hm_tmp[j]) * h_tau_inv_local[k_idx]
+                    k3w[j] = (w_inf_now[k_idx] - w_tmp[j]) * tau_inv_now[k_idx]
+                    k3hm[j] = (h_inf_now[k_idx] - hm_tmp[j]) * h_tau_inv_now[k_idx]
 
                 # ---- k4 ----
                 for j in range(3 * n_ch):
@@ -549,9 +692,8 @@ try:
                 for j in range(3 * n_ch):
                     c_idx = j // n_ch
                     k_idx = j - c_idx * n_ch
-                    k4w[j] = (w_inf_local[k_idx] - w_tmp[j]) * tau_inv_local[k_idx]
-                    k4hm[j] = (h_inf_local[k_idx] - hm_tmp[j]) * h_tau_inv_local[k_idx]
-
+                    k4w[j] = (w_inf_now[k_idx] - w_tmp[j]) * tau_inv_now[k_idx]
+                    k4hm[j] = (h_inf_now[k_idx] - hm_tmp[j]) * h_tau_inv_now[k_idx]
                 # ---- Update state ----
                 s = dt / 6.0
                 V0 = V0 + s * (k1V0 + 2.0 * k2V0 + 2.0 * k3V0 + k4V0)
@@ -624,6 +766,36 @@ try:
                         spike_step_buf[idx, prev_count] = _step + 1
                     spike_counts[idx] = prev_count + 1
 
+                # Ca readouts (passive: never feed back into V unless the
+                # caller attached KCa channels)
+                if write_peak:
+                    if Ca_a > pk_a: pk_a = Ca_a
+                    if Ca_b > pk_b: pk_b = Ca_b
+                    if Ca_c > pk_c: pk_c = Ca_c
+                if write_trace:
+                    if (_step + 1) % ca_decim == 0:
+                        i_tr = (_step + 1) // ca_decim - 1
+                        if i_tr < n_tr:
+                            ca_trace[idx, 0, i_tr] = Ca_a
+                            ca_trace[idx, 1, i_tr] = Ca_b
+                            ca_trace[idx, 2, i_tr] = Ca_c
+
+            if write_peak:
+                ca_peak[idx, 0] = pk_a
+                ca_peak[idx, 1] = pk_b
+                ca_peak[idx, 2] = pk_c
+            if write_final:
+                final_state[idx, 0] = V0; final_state[idx, 1] = V1; final_state[idx, 2] = V2
+                final_state[idx, 3] = m0; final_state[idx, 4] = m1; final_state[idx, 5] = m2
+                final_state[idx, 6] = h0; final_state[idx, 7] = h1; final_state[idx, 8] = h2
+                final_state[idx, 9] = n0; final_state[idx, 10] = n1; final_state[idx, 11] = n2
+                for j in range(3 * n_ch):
+                    final_state[idx, 12 + j] = w[j]
+                    final_state[idx, 12 + 3 * n_ch + j] = h_mech[j]
+                final_state[idx, 12 + 6 * n_ch] = Ca_a
+                final_state[idx, 13 + 6 * n_ch] = Ca_b
+                final_state[idx, 14 + 6 * n_ch] = Ca_c
+
         return spike_counts
 
     @njit(cache=True, fastmath=True, inline="always")
@@ -648,6 +820,8 @@ try:
         dt, n_steps, primary_compartment,
         spike_step_buf,   # (N, max_spikes) int32
         max_spikes,
+        mech_init_rest,   # != 0 → w starts at w_init_ch (zero tension)
+        w_init_ch,        # (n_ch,)
     ):
         """Generalised Rush-Larsen / exponential-Euler integrator for the
         S2 scenario (HH + Piezo1/TREK1 mechano gates; no Ca pool, KCa, TRP,
@@ -688,7 +862,10 @@ try:
             w = np.empty(3 * n_ch)
             for c in range(3):
                 for k in range(n_ch):
-                    w[c * n_ch + k] = w_inf_l[k]
+                    if mech_init_rest != 0:
+                        w[c * n_ch + k] = w_init_ch[k]
+                    else:
+                        w[c * n_ch + k] = w_inf_l[k]
 
             Cm0 = C_eff_per_vox[0, idx]
             Cm1 = C_eff_per_vox[1, idx]
@@ -1063,6 +1240,57 @@ class MulticompartmentMechanoHHNeuron:
                 tau_inv[k] = denom_k / tau_0s[k]
         return E_revs, w_inf, tau_inv, kT
 
+    def _mechano_channel_params(self) -> dict:
+        """Per-channel scalars for in-kernel tension → gate kinetics.
+
+        Used by the fast-path kernels when the tension is time-varying
+        (``drive``); mirrors ``_channel_kinetics`` and
+        ``_inactivation_kinetics`` exactly.
+        """
+        chs = self.mechano_channels
+        n_ch = len(chs)
+        f64 = np.float64
+        out = {
+            "T_half": np.array([ch.T_half for ch in chs], dtype=f64),
+            "dA": np.array([ch.delta_A for ch in chs], dtype=f64),
+            "tau_act_inv": np.array(
+                [1.0 / float(ch.tau_act) if ch.tau_act is not None else 0.0
+                 for ch in chs], dtype=f64),
+            "tau0": np.array([ch.tau_0 for ch in chs], dtype=f64),
+            "inact_on": np.zeros(n_ch, dtype=f64),
+            "hT_half": np.zeros(n_ch, dtype=f64),
+            "hdA": np.zeros(n_ch, dtype=f64),
+            "htau_inv": np.zeros(n_ch, dtype=f64),
+            "kT": float(chs[0]._kT) if n_ch else 4.114,
+        }
+        if self.piezo_inactivation:
+            for k, ch in enumerate(chs):
+                if ch.tau_inact is None:
+                    continue
+                out["inact_on"][k] = 1.0
+                out["hT_half"][k] = (ch.T_half if ch.inact_T_half is None
+                                     else ch.inact_T_half)
+                out["hdA"][k] = (ch.delta_A if ch.inact_delta_A is None
+                                 else ch.inact_delta_A)
+                out["htau_inv"][k] = 1.0 / ch.tau_inact
+        return out
+
+    def _rest_mechano_gates(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Zero-tension steady state of the mechano gates, per channel.
+
+        Returns ``(w_rest, h_rest)``, each shape (n_ch,): activation
+        ``w_inf(T=0)`` from :meth:`_channel_kinetics` and inactivation
+        ``h_inf(T=0)`` from :meth:`_inactivation_kinetics` (1.0 when
+        inactivation is off). These are the ``mechano_init="rest"``
+        initial values used by every integrator path.
+        """
+        n_ch = len(self.mechano_channels)
+        T0 = np.zeros(1, dtype=np.float64)
+        _, w0, _, _ = self._channel_kinetics(T0, n_ch)
+        h0, _, _ = self._inactivation_kinetics(T0, n_ch)
+        return (np.ascontiguousarray(w0[:, 0], dtype=np.float64),
+                np.ascontiguousarray(h0[:, 0], dtype=np.float64))
+
     def _inactivation_kinetics(
         self,
         T: NDArray[np.floating],  # (N,) tension
@@ -1229,6 +1457,7 @@ class MulticompartmentMechanoHHNeuron:
         I_stim: NDArray[np.floating] | float | dict[str, float] = 0.0,
         tension_trace: NDArray[np.floating] | float = 0.0,
         pressure_envelope: NDArray[np.floating] | float = 0.0,
+        mechano_init: str = "rest",
     ) -> dict[str, NDArray[np.floating]]:
         """Single-voxel multi-compartment trace simulation.
 
@@ -1254,6 +1483,16 @@ class MulticompartmentMechanoHHNeuron:
             Slow (ms-scale) pressure envelope [Pa] for the NICE model.
             Ignored when ``nice_model is None``. Scalar for constant
             amplitude, or 1-D array of length n_steps for pulse trains.
+        mechano_init : {"rest", "peak_steady"}
+            Initial mechano gates (activation ``w`` and inactivation
+            ``h_mech``). ``"rest"`` (default): steady state for zero
+            tension — the ON window starts from true rest, as every
+            theta burst does because the tension relaxes during the
+            180 ms OFF time (burst-periodicity study,
+            ``data/halle_dacc/calcium/burst_periodicity.json``).
+            ``"peak_steady"``: steady state for ``tension_trace[0]`` (the
+            legacy canonical initial condition). V, HH gates and [Ca]
+            start at rest in both modes. See :data:`MECHANO_INIT_MODES`.
 
         Returns
         -------
@@ -1323,14 +1562,17 @@ class MulticompartmentMechanoHHNeuron:
         m = np.full((3, 1), m0)
         h = np.full((3, 1), h0)
         nn = np.full((3, 1), n0)
-        # Initialise mechano gates at steady state for tension[0]
+        # Initialise mechano gates at steady state for zero tension (rest,
+        # default) or for tension[0] (legacy 'peak_steady')
+        T_init = 0.0 if _check_mechano_init(mechano_init) else tension_arr[0]
         E_revs0, w_inf0, tau_inv0, _kT = self._channel_kinetics(
-            np.array([tension_arr[0]]), n_ch
+            np.array([T_init], dtype=np.float64), n_ch
         )
         w = np.broadcast_to(w_inf0[None, :, :], (3, n_ch, 1)).copy() if n_ch else np.zeros((3, 0, 1))
-        # Phase-3: inactivation gate, initialised at h_inf for tension[0]
+        # Phase-3: inactivation gate, initialised at h_inf for the same tension
         if self.piezo_inactivation:
-            h_inf0, h_tau_inv0, _ = self._inactivation_kinetics(np.array([tension_arr[0]]), n_ch)
+            h_inf0, h_tau_inv0, _ = self._inactivation_kinetics(
+                np.array([T_init], dtype=np.float64), n_ch)
             h_mech = np.broadcast_to(h_inf0[None, :, :], (3, n_ch, 1)).copy() if n_ch else None
         else:
             h_mech = None
@@ -1484,17 +1726,52 @@ class MulticompartmentMechanoHHNeuron:
         I_stim_per_compartment: NDArray[np.floating],  # (3,)
         primary_compartment: int = 1,  # soma
         pressure_envelope: NDArray[np.floating] | float = 0.0,  # (N,) or (n_steps, N) or scalar
-        backend: str = "numba",
+        backend: str = "auto",
         integrator: str = "rk4",
+        *,
+        drive: NDArray[np.floating] | None = None,
+        initial_state: NDArray[np.floating] | None = None,
+        return_state: bool = False,
+        ca_trace_decim: int = 0,
+        mechano_init: str = "rest",
     ) -> NDArray[np.integer]:
         """Run N voxels in parallel; return spike count at primary compartment.
+
+        ``mechano_init`` selects the initial mechano gates of every path
+        (Numba/CUDA RK4, Rush-Larsen, NumPy fallback): ``"rest"`` (default)
+        = zero-tension steady state (true rest); ``"peak_steady"`` = steady
+        state for each voxel's step-0 tension (legacy canonical). An
+        explicit ``initial_state`` overrides it. See
+        :data:`ultraneuron.neuron.MECHANO_INIT_MODES`.
+
+        Optional window-chaining / readout arguments (RK4 fast path only;
+        see :func:`simulate_voxels_3comp` for the public wrapper):
+
+        * ``drive`` — (n_steps,) tension multiplier shared by all voxels,
+          T_i(t) = tensions[i] · drive[t] (see :func:`tension_drive`).
+          ``None`` → constant tension (canonical).
+        * ``initial_state`` — (N, n_state) start state (layout from
+          :func:`state_layout`); ``None`` → V_rest, HH gates at steady
+          state, [Ca] = Ca_rest and mechano gates per ``mechano_init``
+          (:func:`rest_initial_state` / :func:`peak_steady_initial_state`).
+        * ``return_state`` — store the end-of-window (N, n_state) state in
+          ``self._last_final_state``.
+        * ``ca_trace_decim`` — when > 0 and a Ca pool is attached, store
+          [Ca] every ``ca_trace_decim`` steps in ``self._last_ca_trace``
+          (N, 3, n_steps // ca_trace_decim) float32.
+
+        With a Ca pool attached the per-voxel per-compartment peak [Ca]
+        over the window is always stored in ``self._last_ca_peak`` (N, 3).
 
         ``pressure_envelope`` follows NICE conventions:
             * scalar — applied uniformly across voxels and time.
             * (N,)    — constant per voxel (one envelope value each).
             * (n_steps, N) — fully time- and voxel-resolved.
 
-        ``backend`` selects the per-voxel integrator:
+        ``backend`` selects the per-voxel integrator (``"auto"``, the default,
+        uses CUDA whenever a device is visible and the ``AMN_BACKEND``
+        environment variable does not say otherwise; see
+        :func:`ultraneuron.cuda_backend.resolve_backend`):
             * ``"numba"`` — multi-threaded CPU Numba kernel (default).
             * ``"cuda"``  — single-GPU @cuda.jit kernel via
               :mod:`ultraneuron.cuda_backend`. Falls back to
@@ -1507,6 +1784,8 @@ class MulticompartmentMechanoHHNeuron:
         params = self._stacked_params()
         phi = self._kinetics._q10_scale()
         I_stim_arr = np.asarray(I_stim_per_compartment, dtype=np.float64).reshape(3, 1)
+        _init_rest = _check_mechano_init(mechano_init)
+        w_rest_ch, hm_rest_ch = self._rest_mechano_gates()
 
         # ---- Fast path: numba 3-comp kernel ------------------------------
         # Eligible for HH + mechanosensitive activation/inactivation +
@@ -1522,6 +1801,7 @@ class MulticompartmentMechanoHHNeuron:
         # backend is unavailable or asks for a configuration outside the
         # CUDA kernel's scope.
         from . import cuda_backend as _cuda  # noqa: PLC0415
+        backend = _cuda.resolve_backend(backend)
         if backend == "cuda":
             if not _cuda.is_cuda_available():
                 _cuda.maybe_warn_unavailable("cuda")
@@ -1547,6 +1827,19 @@ class MulticompartmentMechanoHHNeuron:
             raise NotImplementedError(
                 "integrator='rl' requires the Numba 3-comp fast path with a "
                 "constant pressure envelope. Use integrator='rk4'.",
+            )
+        # Window chaining / readouts are implemented in the RK4 fast-path
+        # kernels (Numba CPU and CUDA) only.
+        self._last_final_state = None
+        self._last_ca_peak = None
+        self._last_ca_trace = None
+        _extended = (drive is not None or initial_state is not None
+                     or bool(return_state) or int(ca_trace_decim) > 0)
+        if _extended and (integrator != "rk4" or not _fast_eligible):
+            raise NotImplementedError(
+                "drive / initial_state / return_state / ca_trace_decim require "
+                "integrator='rk4' on the Numba/CUDA 3-comp fast path with a "
+                "constant pressure envelope.",
             )
         if _fast_eligible:
             tensions_fp = np.asarray(tensions, dtype=np.float64)
@@ -1726,13 +2019,48 @@ class MulticompartmentMechanoHHNeuron:
                     int(primary_compartment),
                     spike_step_buf_fp,
                     int(_max_spikes),
+                    int(_init_rest),
+                    w_rest_ch,
                 )
+
+            # ---- Optional time-varying drive / state I/O / Ca readouts ----
+            n_state = state_size(n_ch)
+            if drive is not None:
+                drive_fp = np.ascontiguousarray(drive, dtype=np.float64).reshape(-1)
+                if drive_fp.size != n_steps:
+                    raise ValueError(
+                        f"drive must have n_steps={n_steps} entries, got "
+                        f"{drive_fp.size}",
+                    )
+            else:
+                drive_fp = np.zeros(0, dtype=np.float64)
+            chp = self._mechano_channel_params()
+            if initial_state is not None:
+                init_fp = np.ascontiguousarray(initial_state, dtype=np.float64)
+                if init_fp.shape != (N, n_state):
+                    raise ValueError(
+                        f"initial_state must have shape ({N}, {n_state}), got "
+                        f"{init_fp.shape}",
+                    )
+            else:
+                init_fp = np.zeros((1, 1), dtype=np.float64)
+            final_fp = (np.zeros((N, n_state), dtype=np.float64) if return_state
+                        else np.zeros((1, 1), dtype=np.float64))
+            _has_ca = self.calcium_dynamics is not None
+            ca_peak_fp = (np.zeros((N, 3), dtype=np.float64) if _has_ca
+                          else np.zeros((1, 1), dtype=np.float64))
+            _decim = int(ca_trace_decim) if _has_ca else 0
+            if _decim > 0:
+                ca_trace_fp = np.zeros((N, 3, n_steps // _decim), dtype=np.float32)
+            else:
+                ca_trace_fp = np.zeros((1, 1, 1), dtype=np.float32)
+                _decim = 0
 
             _kernel_fn = (
                 _cuda.rk4_batch_cuda_3comp if _use_cuda
                 else _rk4_batch_numba_3comp
             )
-            return _kernel_fn(
+            sc = _kernel_fn(
                 np.ascontiguousarray(w_inf_fp, dtype=np.float64),
                 np.ascontiguousarray(tau_inv_fp, dtype=np.float64),
                 np.ascontiguousarray(h_inf_fp, dtype=np.float64),
@@ -1768,7 +2096,21 @@ class MulticompartmentMechanoHHNeuron:
                 int(primary_compartment),
                 spike_step_buf_fp,
                 int(_max_spikes),
+                drive_fp, tensions_fp,
+                chp["T_half"], chp["dA"], chp["tau_act_inv"], chp["tau0"],
+                chp["inact_on"], chp["hT_half"], chp["hdA"], chp["htau_inv"],
+                float(chp["kT"]),
+                init_fp, final_fp,
+                ca_peak_fp, ca_trace_fp, int(_decim),
+                int(_init_rest), w_rest_ch, hm_rest_ch,
             )
+            if return_state:
+                self._last_final_state = final_fp
+            if _has_ca:
+                self._last_ca_peak = ca_peak_fp
+            if _decim > 0:
+                self._last_ca_trace = ca_trace_fp
+            return sc
 
         # Pre-compute (3, n_steps, N) C_eff and dC/dt traces if NICE is enabled
         # — for the constant-envelope case the dC/dt is exactly zero.
@@ -1819,16 +2161,21 @@ class MulticompartmentMechanoHHNeuron:
         m = np.full((3, N), m0)
         h = np.full((3, N), h0)
         nn = np.full((3, N), n0)
+        w_start = (np.broadcast_to(w_rest_ch[:, None], (n_ch, N))
+                   if _init_rest else w_inf)
         w = (
-            np.broadcast_to(w_inf[None, :, :], (3, n_ch, N)).copy()
+            np.broadcast_to(w_start[None, :, :], (3, n_ch, N)).copy()
             if n_ch
             else np.zeros((3, 0, N))
         )
-        # Phase-3 state — initialised at steady-state for tensions[t=0]
+        # Phase-3 state — initialised at steady state for zero tension
+        # (rest) or for tensions[t=0] (legacy 'peak_steady')
         if self.piezo_inactivation:
             h_inf0, h_tau_inv0, _ = self._inactivation_kinetics(tensions, n_ch)
+            h_start = (np.broadcast_to(hm_rest_ch[:, None], (n_ch, N))
+                       if _init_rest else h_inf0)
             h_mech = (
-                np.broadcast_to(h_inf0[None, :, :], (3, n_ch, N)).copy()
+                np.broadcast_to(h_start[None, :, :], (3, n_ch, N)).copy()
                 if n_ch
                 else None
             )
@@ -1907,6 +2254,17 @@ class MulticompartmentMechanoHHNeuron:
         return spike_counts[primary_compartment]
 
 
+def _per_voxel_pressure(pressure_envelope, mask):
+    """Reduce a scalar / 3-D pressure map to the (N,) array of masked voxels."""
+    if np.isscalar(pressure_envelope):
+        return float(pressure_envelope)
+    P = np.asarray(pressure_envelope, dtype=np.float64)
+    if P.shape != mask.shape:
+        msg = f"pressure_envelope shape {P.shape} must match the strain grid {mask.shape}"
+        raise ValueError(msg)
+    return P[mask]
+
+
 def simulate_map_3comp(
     strain_3d: NDArray[np.floating],
     neuron: MulticompartmentMechanoHHNeuron,
@@ -1917,8 +2275,10 @@ def simulate_map_3comp(
     I_stim: NDArray[np.floating] | float = 0.0,
     tension_threshold: float = 0.0,
     primary_compartment: int = 1,  # soma
-    backend: str = "numba",
+    backend: str = "auto",
     integrator: str = "rk4",
+    pressure_envelope: NDArray[np.floating] | float = 0.0,
+    mechano_init: str = "rest",
 ) -> dict[str, NDArray]:
     """Per-voxel firing map using the 3-compartment neuron.
 
@@ -1941,6 +2301,21 @@ def simulate_map_3comp(
     primary_compartment : int
         Compartment index used to define a "spike" for the firing map
         (0=dendrite, 1=soma, 2=AIS). Default 1 (soma).
+    pressure_envelope : float or ndarray (nx, ny, nz)
+        Carrier pressure amplitude [Pa] driving the NICE intramembrane-
+        cavitation module (ignored when the neuron has no ``nice_model``).
+        A scalar applies to every voxel; a 3-D array supplies the per-voxel
+        peak pressure of the acoustic field (constant over the window).
+    mechano_init : {"rest", "peak_steady"}
+        Initial mechano gates of every simulated window. ``"rest"``
+        (default): steady state for zero tension — the ON window starts
+        from true rest, as every burst of the theta-burst protocol does
+        because the tension relaxes during the 180 ms OFF time (chained
+        200 ms periods with full state carry-over,
+        ``scripts/run_burst_periodicity.py``). ``"peak_steady"``: steady
+        state for each voxel's peak tension (legacy canonical runs:
+        halle_dacc S2 13381 spikes / 3590 voxels vs 12250 / 3531 from
+        rest). See :data:`ultraneuron.neuron.MECHANO_INIT_MODES`.
 
     Returns
     -------
@@ -1964,11 +2339,14 @@ def simulate_map_3comp(
             I_arr = np.array([0.0, float(I_stim), 0.0])
         else:
             I_arr = np.asarray(I_stim, dtype=np.float64)
+        P_env = _per_voxel_pressure(pressure_envelope, mask)
         sc = neuron._simulate_batch(
             tensions, dt, n_steps, I_arr,
             primary_compartment=primary_compartment,
             backend=backend,
             integrator=integrator,
+            pressure_envelope=P_env,
+            mechano_init=mechano_init,
         )
         counts[mask] = sc
         firing[mask] = sc > 0
@@ -1986,12 +2364,38 @@ def simulate_map_3comp_with_spike_times(
     I_stim: NDArray[np.floating] | float = 0.0,
     tension_threshold: float = 0.0,
     primary_compartment: int = 1,
-    backend: str = "numba",
+    backend: str = "auto",
     integrator: str = "rk4",
+    pressure_envelope: NDArray[np.floating] | float = 0.0,
+    calcium_readout: bool | CalciumDynamics = False,
+    ca_trace_dt_ms: float | None = None,
+    mechano_init: str = "rest",
 ) -> dict[str, NDArray]:
     """Same as ``simulate_map_3comp`` but also returns per-firing-voxel
     spike times in CSR layout, suitable for raster / PSTH / latency
     rendering downstream.
+
+    Calcium readout (optional)
+    --------------------------
+    ``calcium_readout=True`` (or a ``CalciumDynamics`` instance) attaches
+    the single-pool Ca model as a *passive* readout when the neuron has no
+    pool (e.g. scenario S2): with no KCa channels it has no path back to
+    V, so all spike outputs are bit-identical to ``calcium_readout=False``.
+    Whenever a pool is active (readout, or S4/S5 neurons) the result also
+    carries
+
+    * ``ca_peak_map``    float32 (3, nx, ny, nz) — per-compartment peak
+      [Ca] [μM] over the window (dendrite, soma, AIS); NaN for voxels
+      below ``tension_threshold`` (not simulated);
+    * ``ca_peak_firing`` float32 (n_fire, 3), aligned with
+      ``spike_voxel_idx``;
+    * ``ca_passive``     bool — True when no KCa feedback is present;
+
+    and with ``ca_trace_dt_ms`` set, decimated traces of the firing voxels
+    (``ca_trace_firing`` float32 (n_fire, 3, n_tr), ``ca_trace_t_ms``),
+    recomputed by a second kernel pass over the firing subset (per-voxel
+    integration is independent, so the pass reproduces pass 1 exactly).
+    RK4 Numba/CUDA fast path only.
 
     Two-pass strategy:
       1. Vectorised constant-tension batch over all above-threshold
@@ -2004,6 +2408,20 @@ def simulate_map_3comp_with_spike_times(
     The map outputs (``firing_map``, ``spike_count_map``, ``tension_3d``)
     match ``simulate_map_3comp`` bit-for-bit so downstream consumers
     that don't care about times keep working.
+
+    Initial condition
+    -----------------
+    ``mechano_init`` (default ``"rest"``) is applied identically to the
+    counts pass, the Ca-trace re-run and the per-voxel ``simulate()``
+    fallback, so counts and spike times stay mutually consistent.
+    ``"rest"`` (default) starts every voxel from true rest (zero-tension
+    steady state of the mechano gates), as every theta burst does because
+    the tension relaxes during the 180 ms OFF time (chained 200 ms periods
+    with full state carry-over, ``scripts/run_burst_periodicity.py``);
+    ``"peak_steady"`` reproduces the legacy canonical runs (gates at the
+    peak-tension steady state; halle_dacc S2 13381 spikes / 3590 voxels
+    vs 12250 / 3531 from rest). See
+    :data:`ultraneuron.neuron.MECHANO_INIT_MODES`.
     """
     from .channels import strain_to_membrane_tension
 
@@ -2043,9 +2461,8 @@ def simulate_map_3comp_with_spike_times(
     # the maximum biophysically plausible firing rate (~1 kHz).
     max_spikes_per_voxel = max(int(np.ceil(float(duration) * 1.0)) + 8, 32)
     # Fast-path eligibility: the JIT 3-comp kernel handles NICE with a
-    # constant pressure envelope (scalar 0.0 here, since this entry point
-    # doesn't expose a pressure_envelope kwarg) — only fully time-varying
-    # NICE envelopes fall out of scope.  The earlier blanket exclusion of
+    # constant (scalar or per-voxel) pressure envelope — only fully
+    # time-varying NICE envelopes fall out of scope.  The earlier blanket exclusion of
     # any neuron with a nice_model attached was unnecessarily conservative
     # and forced the slow per-voxel Pass-2 NumPy loop for NICE-enabled
     # scenarios.
@@ -2054,18 +2471,44 @@ def simulate_map_3comp_with_spike_times(
     if fast_eligible:
         neuron._record_spike_steps = True
         neuron._max_spikes_per_voxel = max_spikes_per_voxel
+    P_env = _per_voxel_pressure(pressure_envelope, mask)
+    ca_ctx = _PassiveCalcium(neuron, calcium_readout)
+    ca_ctx.__enter__()
     try:
-        sc = neuron._simulate_batch(
-            eligible_T, dt, n_steps, I_arr,
-            primary_compartment=primary_compartment,
-            backend=backend,
-            integrator=integrator,
-        )
+        has_ca = neuron.calcium_dynamics is not None
+        ca_passive = bool(has_ca and not neuron.kca_channels)
+        try:
+            sc = neuron._simulate_batch(
+                eligible_T, dt, n_steps, I_arr,
+                primary_compartment=primary_compartment,
+                backend=backend,
+                integrator=integrator,
+                pressure_envelope=P_env,
+                mechano_init=mechano_init,
+            )
+        finally:
+            if fast_eligible:
+                neuron._record_spike_steps = False
+                spike_steps_buf = getattr(neuron, "_last_spike_step_buf", None)
+                neuron._last_spike_step_buf = None
+        ca_peak_elig = getattr(neuron, "_last_ca_peak", None) if has_ca else None
+        neuron._last_ca_peak = None
+        ca_trace_fire = None
+        if has_ca and ca_trace_dt_ms is not None and np.any(sc > 0):
+            decim = max(int(round(float(ca_trace_dt_ms) / dt)), 1)
+            P_fire = P_env if np.isscalar(P_env) else np.asarray(P_env)[sc > 0]
+            neuron._simulate_batch(
+                eligible_T[sc > 0], dt, n_steps, I_arr,
+                primary_compartment=primary_compartment,
+                backend=backend, integrator="rk4",
+                pressure_envelope=P_fire, ca_trace_decim=decim,
+                mechano_init=mechano_init,
+            )
+            ca_trace_fire = neuron._last_ca_trace
+            neuron._last_ca_trace = None
+            neuron._last_ca_peak = None
     finally:
-        if fast_eligible:
-            neuron._record_spike_steps = False
-            spike_steps_buf = getattr(neuron, "_last_spike_step_buf", None)
-            neuron._last_spike_step_buf = None
+        ca_ctx.__exit__(None, None, None)
     counts[mask] = sc
     firing[mask] = sc > 0
 
@@ -2099,6 +2542,7 @@ def simulate_map_3comp_with_spike_times(
                 dt=dt, duration=duration,
                 I_stim=I_stim,
                 tension_trace=float(fire_T[k]),
+                mechano_init=mechano_init,
             )
             st = np.asarray(
                 r["spike_times_per_compartment"][primary_compartment],
@@ -2120,7 +2564,7 @@ def simulate_map_3comp_with_spike_times(
         offsets = np.zeros(1, dtype=np.int64)
         spike_times_ms = np.empty(0, dtype=np.float32)
 
-    return {
+    result = {
         "firing_map": firing,
         "spike_count_map": counts,
         "latency_map": latency,
@@ -2132,3 +2576,348 @@ def simulate_map_3comp_with_spike_times(
         "duration_ms": float(duration),
         "dt_ms": float(dt),
     }
+    if has_ca:
+        if ca_peak_elig is None:
+            raise NotImplementedError(
+                "Ca readouts require the RK4 Numba/CUDA fast path.",
+            )
+        ca_map = np.full((3, nx, ny, nz), np.nan, dtype=np.float32)
+        for c in range(3):
+            ca_map[c][mask] = ca_peak_elig[:, c]
+        result["ca_peak_map"] = ca_map
+        result["ca_peak_firing"] = ca_peak_elig[fire_sub].astype(np.float32)
+        result["ca_passive"] = ca_passive
+        if ca_trace_fire is not None:
+            result["ca_trace_firing"] = ca_trace_fire
+            result["ca_trace_t_ms"] = (
+                np.arange(1, ca_trace_fire.shape[2] + 1)
+                * max(int(round(float(ca_trace_dt_ms) / dt)), 1) * float(dt)
+            )
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Window chaining: state layout, tension drive profiles, voxel-level API
+# ---------------------------------------------------------------------------
+
+#: Visco-elastic relaxation time constant of the Halle/dACC canonical field
+#: [ms]: single-exponential fit of |u_x| at the peak-ARF voxel over the
+#: 180 ms OFF segment (``data/halle_dacc/validation_report/manifest.json``,
+#: ``displacement_outputs.relax_tau_ms`` = 32.42 ms; halle_caudate 33.3 ms,
+#: halle_dcn 31.5 ms).
+TAU_RELAX_MS_HALLE_DACC = 32.42024559090537
+
+
+def state_size(n_ch: int) -> int:
+    """Number of per-voxel state variables for ``n_ch`` mechano channels."""
+    return 15 + 6 * int(n_ch)
+
+
+def state_layout(n_ch: int) -> dict[str, slice]:
+    """Column slices of the (N, n_state) per-voxel state array.
+
+    Order: ``V`` (dendrite, soma, AIS) [mV], HH gates ``m``, ``h``, ``n``
+    (3 each), mechano activation ``w`` (3·n_ch, compartment-major:
+    index ``c*n_ch + k``), mechano inactivation ``h_mech`` (3·n_ch, same
+    order; 1.0 when inactivation is off) and ``Ca`` [μM] (3; 0 when no
+    Ca pool is attached).
+    """
+    n_ch = int(n_ch)
+    return {
+        "V": slice(0, 3),
+        "m": slice(3, 6),
+        "h": slice(6, 9),
+        "n": slice(9, 12),
+        "w": slice(12, 12 + 3 * n_ch),
+        "h_mech": slice(12 + 3 * n_ch, 12 + 6 * n_ch),
+        "Ca": slice(12 + 6 * n_ch, 15 + 6 * n_ch),
+    }
+
+
+def _base_initial_state(neuron, N, calcium):
+    """V = V_rest, HH gates at V_rest steady state, [Ca]; mechano cols unset."""
+    n_ch = len(neuron.mechano_channels)
+    lay = state_layout(n_ch)
+    st = np.empty((N, state_size(n_ch)), dtype=np.float64)
+    m0, h0, n0 = neuron._kinetics._steady_state_gates(neuron.V_rest)
+    st[:, lay["V"]] = neuron.V_rest
+    st[:, lay["m"]] = m0
+    st[:, lay["h"]] = h0
+    st[:, lay["n"]] = n0
+    has_ca = (neuron.calcium_dynamics is not None) if calcium is None else bool(calcium)
+    cd = neuron.calcium_dynamics or CalciumDynamics()
+    st[:, lay["Ca"]] = cd.Ca_rest if has_ca else 0.0
+    return st
+
+
+def _fill_mechano(st, n_ch, w_inf, h_inf):
+    """Write per-channel (n_ch, N) or (n_ch,) w/h_mech values, all compartments."""
+    for c in range(3):
+        for k in range(n_ch):
+            st[:, 12 + c * n_ch + k] = w_inf[k]
+            st[:, 12 + 3 * n_ch + c * n_ch + k] = h_inf[k]
+
+
+def rest_initial_state(
+    neuron: MulticompartmentMechanoHHNeuron,
+    tensions: NDArray[np.floating] | int,
+    calcium: bool | None = None,
+) -> NDArray[np.float64]:
+    """Explicit (N, n_state) form of the default true-rest initial state.
+
+    V = V_rest, HH gates at their V_rest steady state, mechano gates
+    (activation ``w`` and inactivation ``h_mech``) at their steady state
+    for ZERO tension, [Ca] = Ca_rest. This is ``mechano_init="rest"``,
+    the default of every simulate path: every burst of the theta-burst
+    protocol starts from rest because the tension relaxes during the
+    180 ms OFF time (``scripts/run_burst_periodicity.py``). Passing it as
+    ``initial_state`` reproduces ``initial_state=None`` bit-for-bit.
+
+    ``tensions`` only sets N (an int is accepted). ``calcium`` overrides
+    whether a Ca pool is assumed (default: whether
+    ``neuron.calcium_dynamics`` is set).
+
+    Note: this analytic rest state differs from the state reached by
+    integrating a voxel at zero tension for 2 s (``B_rest_state`` in
+    ``burst_periodicity.npz``) by ~2 µV in V and ~1e-6 in the HH gates
+    (the nominal V_rest is not the exact fixed point of the 3-comp
+    neuron); mechano gates agree exactly.
+    """
+    N = int(tensions) if np.isscalar(tensions) else int(np.asarray(tensions).size)
+    n_ch = len(neuron.mechano_channels)
+    st = _base_initial_state(neuron, N, calcium)
+    w_rest, h_rest = neuron._rest_mechano_gates()
+    _fill_mechano(st, n_ch, w_rest, h_rest)
+    return st
+
+
+def peak_steady_initial_state(
+    neuron: MulticompartmentMechanoHHNeuron,
+    tensions: NDArray[np.floating],
+    calcium: bool | None = None,
+) -> NDArray[np.float64]:
+    """Explicit (N, n_state) form of the legacy ``"peak_steady"`` init.
+
+    V = V_rest, HH gates at their V_rest steady state, mechano gates at
+    steady state for ``tensions`` (the original canonical runs started
+    the ON window with w = w_inf(T_peak), i.e. channels already open),
+    [Ca] = Ca_rest. Passing this as ``initial_state`` reproduces
+    ``mechano_init="peak_steady"`` bit-for-bit (constant tension).
+    ``calcium`` overrides whether a Ca pool is assumed (default: whether
+    ``neuron.calcium_dynamics`` is set).
+    """
+    T = np.asarray(tensions, dtype=np.float64).reshape(-1)
+    n_ch = len(neuron.mechano_channels)
+    st = _base_initial_state(neuron, T.size, calcium)
+    _, w_inf, _, _ = neuron._channel_kinetics(T, n_ch)
+    h_inf, _, _ = neuron._inactivation_kinetics(T, n_ch)
+    _fill_mechano(st, n_ch, w_inf, h_inf)
+    return st
+
+
+def canonical_initial_state(
+    neuron: MulticompartmentMechanoHHNeuron,
+    tensions: NDArray[np.floating],
+    calcium: bool | None = None,
+) -> NDArray[np.float64]:
+    """Deprecated alias of :func:`peak_steady_initial_state`.
+
+    The canonical initial condition is now true rest
+    (:func:`rest_initial_state`); this name kept the peak-tension
+    steady state and is retained only for backward compatibility.
+    """
+    import warnings as _warn  # noqa: PLC0415
+    _warn.warn(
+        "canonical_initial_state is deprecated; use peak_steady_initial_state "
+        "(legacy, mechano gates at peak-tension steady state) or "
+        "rest_initial_state (the default initial condition).",
+        DeprecationWarning, stacklevel=2,
+    )
+    return peak_steady_initial_state(neuron, tensions, calcium=calcium)
+
+
+def tension_drive(
+    dt: float,
+    t_on_ms: float = 20.0,
+    t_off_ms: float = 180.0,
+    n_periods: int = 1,
+    off_mode: str = "exp",
+    tau_relax_ms: float = TAU_RELAX_MS_HALLE_DACC,
+) -> NDArray[np.float64]:
+    """Per-step tension multiplier for a pulsed ON/OFF protocol.
+
+    Step ``i`` (time ``t_i = i·dt``, held over the step as in
+    ``MulticompartmentMechanoHHNeuron.simulate``) has multiplier
+
+    * ON  (``t_mod < t_on``): 1.0 — constant per-voxel peak tension, as in
+      the canonical single-window runs;
+    * OFF, ``off_mode="exp"`` (default): ``exp(-(t_mod - t_on)/tau_relax)``
+      — the tissue strain (hence membrane tension, which is linear in
+      strain) relaxes with the visco-elastic time constant fitted to the
+      shear-FDTD displacement on the OFF segment (32.4 ms for Halle/dACC);
+    * OFF, ``off_mode="step"``: 0.0 — instantaneous release.
+
+    ``t_mod = t mod (t_on + t_off)``. The ON segment is a flat top (the
+    viscoelastic rise during ON is not modelled, matching the canonical
+    constant-tension convention). Returns an array of
+    ``n_periods · round((t_on + t_off)/dt)`` float64 values.
+    """
+    if off_mode not in ("exp", "step"):
+        raise ValueError(f"off_mode must be 'exp' or 'step', got {off_mode!r}")
+    n_on = int(round(t_on_ms / dt))
+    n_per = int(round((t_on_ms + t_off_ms) / dt))
+    i_mod = np.arange(n_per, dtype=np.int64)
+    f = np.ones(n_per, dtype=np.float64)
+    off = i_mod >= n_on
+    if off_mode == "exp":
+        f[off] = np.exp(-(i_mod[off] - n_on) * float(dt) / float(tau_relax_ms))
+    else:
+        f[off] = 0.0
+    return np.tile(f, int(n_periods))
+
+
+class _PassiveCalcium:
+    """Context manager: temporarily attach a Ca pool as a passive readout.
+
+    Attaches ``CalciumDynamics`` (default parameters, or the instance
+    given) when the neuron has none. Without KCa channels the pool has no
+    path back to V, so spike output is unchanged (bit-identical: the
+    kernels take the pool parameters as runtime arguments only).
+    """
+
+    def __init__(self, neuron, calcium_readout):
+        self.neuron = neuron
+        self.req = calcium_readout
+        self.attached = False
+
+    def __enter__(self):
+        if self.req and self.neuron.calcium_dynamics is None:
+            cd = (self.req if isinstance(self.req, CalciumDynamics)
+                  else CalciumDynamics())
+            self.neuron.calcium_dynamics = cd
+            self.attached = True
+        return self
+
+    def __exit__(self, *exc):
+        if self.attached:
+            self.neuron.calcium_dynamics = None
+        return False
+
+
+def simulate_voxels_3comp(
+    tensions: NDArray[np.floating],
+    neuron: MulticompartmentMechanoHHNeuron,
+    dt: float = 0.001,
+    duration: float = 20.0,
+    I_stim: NDArray[np.floating] | float = 0.0,
+    primary_compartment: int = 1,
+    backend: str = "auto",
+    drive: NDArray[np.floating] | None = None,
+    initial_state: NDArray[np.floating] | None = None,
+    return_state: bool = True,
+    record_spike_times: bool = True,
+    max_spikes_per_voxel: int | None = None,
+    calcium_readout: bool | CalciumDynamics = False,
+    ca_trace_dt_ms: float | None = None,
+    pressure_envelope: NDArray[np.floating] | float = 0.0,
+    mechano_init: str = "rest",
+) -> dict:
+    """Integrate one window for N voxels with optional state carry-over.
+
+    Voxel-level companion of :func:`simulate_map_3comp_with_spike_times`
+    for chaining successive windows (e.g. theta-burst ON/OFF periods):
+    feed ``out["final_state"]`` of one call as ``initial_state`` of the
+    next. Chaining is exact: two consecutive windows reproduce one long
+    window bit-for-bit (spike step indices are window-relative).
+
+    Parameters
+    ----------
+    tensions : (N,) peak membrane tension per voxel [mN/m].
+    drive : (n_steps,) tension multiplier, see :func:`tension_drive`;
+        ``None`` = constant tension. ``n_steps = int(duration/dt)``.
+    initial_state : (N, n_state) start state (:func:`state_layout`);
+        ``None`` = init per ``mechano_init``.
+    mechano_init : {"rest", "peak_steady"}
+        Used when ``initial_state`` is None. ``"rest"`` (default): true
+        rest, mechano gates at the zero-tension steady state
+        (:func:`rest_initial_state`) — every theta burst starts from rest
+        because the tension relaxes in the OFF time. ``"peak_steady"``:
+        mechano gates at steady state for the step-0 tension
+        (:func:`peak_steady_initial_state`, legacy canonical).
+    calcium_readout : attach a ``CalciumDynamics`` pool (default params,
+        or the instance given) as a passive readout when the neuron has
+        none. With no KCa channels it cannot affect V.
+    ca_trace_dt_ms : sample interval of the [Ca] trace output (rounded to
+        a whole number of steps); ``None`` = no traces.
+
+    Returns
+    -------
+    dict with ``spike_counts`` (N,), ``spike_offsets`` (N+1,) and
+    ``spike_times_ms`` (CSR, window-relative, float64) when
+    ``record_spike_times``; ``final_state`` (N, n_state) when
+    ``return_state``; ``ca_peak_uM`` (N, 3) when a Ca pool is active;
+    ``ca_trace_uM`` (N, 3, n_tr) float32 + ``ca_trace_t_ms`` when traces
+    are requested; plus ``n_steps``, ``dt_ms``, ``backend``.
+    """
+    from . import cuda_backend as _cuda  # noqa: PLC0415
+
+    T = np.ascontiguousarray(tensions, dtype=np.float64).reshape(-1)
+    N = T.size
+    n_steps = int(duration / dt)
+    if np.isscalar(I_stim):
+        I_arr = np.array([0.0, float(I_stim), 0.0])
+    else:
+        I_arr = np.asarray(I_stim, dtype=np.float64).reshape(3)
+    if max_spikes_per_voxel is None:
+        max_spikes_per_voxel = max(int(np.ceil(float(duration) * 1.0)) + 8, 32)
+    decim = 0
+    if ca_trace_dt_ms is not None:
+        decim = max(int(round(float(ca_trace_dt_ms) / dt)), 1)
+
+    out: dict = {"n_steps": n_steps, "dt_ms": float(dt),
+                 "backend": _cuda.resolve_backend(backend)}
+    with _PassiveCalcium(neuron, calcium_readout):
+        has_ca = neuron.calcium_dynamics is not None
+        neuron._record_spike_steps = bool(record_spike_times)
+        neuron._max_spikes_per_voxel = int(max_spikes_per_voxel)
+        try:
+            sc = neuron._simulate_batch(
+                T, dt, n_steps, I_arr,
+                primary_compartment=primary_compartment,
+                pressure_envelope=pressure_envelope,
+                backend=backend, integrator="rk4",
+                drive=drive, initial_state=initial_state,
+                return_state=return_state, ca_trace_decim=decim,
+                mechano_init=mechano_init,
+            )
+        finally:
+            neuron._record_spike_steps = False
+            buf = getattr(neuron, "_last_spike_step_buf", None)
+            neuron._last_spike_step_buf = None
+        out["ca_passive"] = bool(has_ca and not neuron.kca_channels)
+    sc = np.asarray(sc, dtype=np.int32)
+    out["spike_counts"] = sc
+    if record_spike_times and buf is not None and buf.shape == (N, max_spikes_per_voxel):
+        if int(sc.max(initial=0)) > max_spikes_per_voxel:
+            import warnings as _warn  # noqa: PLC0415
+            _warn.warn(
+                f"spike count exceeded max_spikes_per_voxel={max_spikes_per_voxel}; "
+                "spike times truncated.", RuntimeWarning, stacklevel=2,
+            )
+        n_rec = np.minimum(sc, max_spikes_per_voxel)
+        offsets = np.concatenate([[0], np.cumsum(n_rec)]).astype(np.int64)
+        keep = np.arange(max_spikes_per_voxel)[None, :] < n_rec[:, None]
+        out["spike_offsets"] = offsets
+        out["spike_times_ms"] = buf[keep].astype(np.float64) * float(dt)
+    if return_state:
+        out["final_state"] = neuron._last_final_state
+    if has_ca:
+        out["ca_peak_uM"] = neuron._last_ca_peak
+        if decim > 0:
+            out["ca_trace_uM"] = neuron._last_ca_trace
+            out["ca_trace_t_ms"] = (np.arange(1, n_steps // decim + 1)
+                                    * decim * float(dt))
+    neuron._last_final_state = None
+    neuron._last_ca_peak = None
+    neuron._last_ca_trace = None
+    return out

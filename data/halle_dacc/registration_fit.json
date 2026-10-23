@@ -1,0 +1,18 @@
+{
+ "method": "ANTs SyN (Mattes MI), MNI152 T1 -> specimen CT at 1 mm; sister repo neuromod_parameters/registration",
+ "warped_brain_volume_mL": 1446.441,
+ "brain_voxels_inside_bone_pct": 0.493279712065684,
+ "surface_to_bone_mm": {
+  "median": 2.0,
+  "mean": 2.153853527444659,
+  "p5": 0.0,
+  "p95": 5.385164807134504,
+  "max": 15.811388300841896
+ },
+ "vault_surface_to_bone_mm": {
+  "median": 2.23606797749979,
+  "p95": 5.0
+ },
+ "held_out_Cz_landmark_mm": 9.664962599963278,
+ "note_on_landmark_residuals": "scalp landmarks (nasion, inion, preauricular) are ill-defined on a soft-tissue-free specimen; their recorded residuals are not used"
+}

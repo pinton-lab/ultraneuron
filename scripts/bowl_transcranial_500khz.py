@@ -39,7 +39,7 @@ from fullwave.transducers.tips import create_tips_transducer
 from shearwave import (
     compute_radiation_force,
     compute_radiation_force_velocity,
-    shear_fdtd_staggered,
+    shear_fdtd,
 )
 from fullwave.utils import plot_utils
 from fullwave.utils.nrrd_reader import download_halle_skull
@@ -742,8 +742,14 @@ def main(
     theta_burst=False,
     with_neural=False,
     neural_config=None,
+    source_p0=0.10e6,
 ):
     """Run end-to-end sparse transcranial shear wave demo.
+
+    ``source_p0`` is the per-voxel surface drive amplitude [Pa] applied to
+    every bowl source voxel (manuscript canonical: 0.10 MPa, which lands the
+    in-brain focal PPP at ~0.46 MPa before the post-hoc 1.087x rescale to
+    0.50 MPa; see scripts/rescale_propagation_map.py).
 
     Parameters
     ----------
@@ -921,7 +927,7 @@ def main(
 
         ncycles = 2
         drop_off = 2
-        source_p0 = 0.10e6  # 0.10 MPa source -> ~0.5 MPa transcranial focal PNP
+        source_p0 = float(source_p0)  # surface drive [Pa]; canonical 0.10 MPa -> ~0.5 MPa focal PNP
                             # (manuscript: free-field focal 1.0 MPa, transcranial 0.5 MPa)
 
         worst_pulse = fullwave.utils.pulse.gaussian_modulated_sinusoidal_signal(
@@ -1413,7 +1419,7 @@ def main(
                 u_full_times.append(it * dt_shear)
 
         print("\nRunning shear wave FDTD solver...")
-        u, v = shear_fdtd_staggered(
+        u, v = shear_fdtd(
             bx=bx,
             by=by,
             bz=bz,
